@@ -4,7 +4,7 @@
 
 将 ROS 2 图像、音频话题与浏览器双向连接，并发布 WebXR 位姿、按键和手部关节。
 
-SDK 仓库：[xr_media](https://github.com/kehuanjack/xr_media)。
+SDK 仓库：[xr_media](https://github.com/AgilexOpensource/xr_media)。
 
 ## 安装
 
@@ -23,7 +23,7 @@ source .venv/bin/activate
 ### 2. 安装依赖
 
 ```bash
-python -m pip install "git+https://github.com/kehuanjack/xr_media.git" 'numpy<2' 'setuptools<80'
+python -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
 rosdep install --from-paths src/xr_media_ros --ignore-src --skip-keys xr_media -y
 ```
 

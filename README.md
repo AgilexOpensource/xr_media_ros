@@ -4,7 +4,7 @@
 
 Bridge ROS 2 image and audio topics bidirectionally with browsers, and publish WebXR poses, buttons and hand joints.
 
-SDK repository: [xr_media](https://github.com/kehuanjack/xr_media).
+SDK repository: [xr_media](https://github.com/AgilexOpensource/xr_media).
 
 ## Installation
 
@@ -23,7 +23,7 @@ source .venv/bin/activate
 ### 2. Install dependencies
 
 ```bash
-python -m pip install "git+https://github.com/kehuanjack/xr_media.git" 'numpy<2' 'setuptools<80'
+python -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
 rosdep install --from-paths src/xr_media_ros --ignore-src --skip-keys xr_media -y
 ```
 

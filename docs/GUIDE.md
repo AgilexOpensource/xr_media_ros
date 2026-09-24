@@ -66,7 +66,7 @@ Only `media.video_input` accepts these local sources; replace `/camera` in the e
 
 Files follow their own frame rate and loop by default; the page supports pause, resume, stop and replay.
 
-Cameras and local video files need the SDK's OpenCV extra. Install with `python -m pip install "xr_media[opencv] @ git+https://github.com/kehuanjack/xr_media.git" 'numpy<2' 'setuptools<80'`. If Colcon provides the SDK, only add a compatible OpenCV installation to that Python environment.
+Cameras and local video files need the SDK's OpenCV extra. Install with `python -m pip install "xr_media[opencv] @ git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'`. If Colcon provides the SDK, only add a compatible OpenCV installation to that Python environment.
 
 ### Server parameters
 
@@ -203,7 +203,7 @@ ros2 topic echo /xr_media/status --once
 
 - Clients share ROS topics and frames; namespaces are not isolated per client.
 - Only one client can use an XR session at a time.
-- See the [SDK guide](https://github.com/kehuanjack/xr_media) for network and browser limitations.
+- See the [SDK guide](https://github.com/AgilexOpensource/xr_media) for network and browser limitations.
 
 ## Alternative installation methods
 
@@ -212,7 +212,7 @@ The README installs the SDK directly from Git. Choose one alternative below if n
 ### Clone and install the SDK with pip
 
 ```bash
-git clone https://github.com/kehuanjack/xr_media.git /path/to/xr_media
+git clone https://github.com/AgilexOpensource/xr_media.git /path/to/xr_media
 python -m pip install /path/to/xr_media 'numpy<2' 'setuptools<80'
 ```
 

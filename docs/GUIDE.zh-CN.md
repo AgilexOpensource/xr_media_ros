@@ -65,7 +65,7 @@ xr_media_node:
 
 文件按自身帧率播放，默认循环；页面可暂停、继续、停止和重播。
 
-摄像头及本地视频文件需要 SDK 的 OpenCV 可选依赖，安装 SDK 时使用 `python -m pip install "xr_media[opencv] @ git+https://github.com/kehuanjack/xr_media.git" 'numpy<2' 'setuptools<80'`。若使用 Colcon 安装 SDK，只需在该 Python 环境补装兼容的 OpenCV。
+摄像头及本地视频文件需要 SDK 的 OpenCV 可选依赖，安装 SDK 时使用 `python -m pip install "xr_media[opencv] @ git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'`。若使用 Colcon 安装 SDK，只需在该 Python 环境补装兼容的 OpenCV。
 
 ### 服务参数
 
@@ -201,7 +201,7 @@ ros2 topic echo /xr_media/status --once
 
 - 多客户端共享 ROS 话题和坐标系，不自动隔离命名空间。
 - XR 会话仅允许一个客户端使用。
-- 网络与浏览器限制见 [SDK 文档](https://github.com/kehuanjack/xr_media)。
+- 网络与浏览器限制见 [SDK 文档](https://github.com/AgilexOpensource/xr_media)。
 
 ## 其他安装方式
 
@@ -210,7 +210,7 @@ ros2 topic echo /xr_media/status --once
 ### 克隆后使用 pip 安装 SDK
 
 ```bash
-git clone https://github.com/kehuanjack/xr_media.git /path/to/xr_media
+git clone https://github.com/AgilexOpensource/xr_media.git /path/to/xr_media
 python -m pip install /path/to/xr_media 'numpy<2' 'setuptools<80'
 ```
 
