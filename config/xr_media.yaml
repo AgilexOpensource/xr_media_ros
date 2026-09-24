@@ -1,0 +1,20 @@
+xr_media_node:
+  ros__parameters:
+    topic_prefix: /xr_media
+
+    server:
+      port: 9443
+      max_clients: 2
+      cert_path: ""
+      key_path: ""
+
+    media:
+      # input: this node subscribes; output: this node publishes.
+      video_input:
+        video0: /xr_media/camera
+      video_output:
+        video1: /camera
+      audio_input:
+        audio0: /xr_media/audio
+      audio_output:
+        audio1: /audio
