@@ -225,7 +225,7 @@ Place both source packages under the workspace's `src/`. From the workspace root
 ```bash
 python -m pip install aiohttp aiortc av 'numpy<2' 'setuptools<80'
 rosdep install --from-paths src/xr_media src/xr_media_ros --ignore-src -y
-python /usr/bin/colcon build --base-paths src --packages-up-to xr_media_ros --symlink-install
+colcon build --base-paths src --packages-up-to xr_media_ros --symlink-install
 source install/setup.bash
 ```
 

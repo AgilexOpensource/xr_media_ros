@@ -32,7 +32,7 @@ Pip provides the SDK, so rosdep skips `xr_media`. Adjust `src/xr_media_ros` to t
 ### 3. Build the bridge
 
 ```bash
-python /usr/bin/colcon build --base-paths src --packages-select xr_media_ros --symlink-install
+colcon build --base-paths src --packages-select xr_media_ros --symlink-install
 source install/setup.bash
 ```
 

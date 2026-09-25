@@ -32,7 +32,7 @@ SDK 由 pip 安装，因此 rosdep 跳过 `xr_media`。`src/xr_media_ros` 按实
 ### 3. 构建桥接包
 
 ```bash
-python /usr/bin/colcon build --base-paths src --packages-select xr_media_ros --symlink-install
+colcon build --base-paths src --packages-select xr_media_ros --symlink-install
 source install/setup.bash
 ```
 
