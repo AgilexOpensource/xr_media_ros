@@ -65,7 +65,7 @@ xr_media_node:
 
 文件按自身帧率播放，默认循环；页面可暂停、继续、停止和重播。
 
-摄像头及本地视频文件需要 SDK 的 OpenCV 可选依赖，安装 SDK 时使用 `python -m pip install "xr_media[opencv] @ git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'`。若使用 Colcon 安装 SDK，只需在该 Python 环境补装兼容的 OpenCV。
+摄像头及本地视频文件需要 SDK 的 OpenCV 可选依赖，安装 SDK 时使用 `python3 -m pip install "xr_media[opencv] @ git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'`。若使用 Colcon 安装 SDK，只需在该 Python 环境补装兼容的 OpenCV。
 
 ### 服务参数
 
@@ -211,19 +211,19 @@ ros2 topic echo /xr_media/status --once
 
 ```bash
 git clone https://github.com/AgilexOpensource/xr_media.git /path/to/xr_media
-python -m pip install /path/to/xr_media 'numpy<2' 'setuptools<80'
+python3 -m pip install /path/to/xr_media 'numpy<2' 'setuptools<80'
 ```
 
-替换源码路径，然后继续首页的 rosdep 与桥接构建步骤。
+替换源码路径，然后继续首页的 apt 与桥接构建步骤。
 
 ### SDK 与桥接一起使用 Colcon
 
 将两个源码包放入工作空间 `src/`，在工作空间根目录执行以下步骤，替代首页的依赖安装与构建命令：
 
 ```bash
-python -m pip install aiohttp aiortc av 'numpy<2' 'setuptools<80'
-rosdep install --from-paths src/xr_media src/xr_media_ros --ignore-src -y
-colcon build --base-paths src --packages-up-to xr_media_ros --symlink-install
+python3 -m pip install aiohttp aiortc av 'numpy<2' 'setuptools<80'
+sudo apt install ros-humble-audio-common-msgs
+python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
 

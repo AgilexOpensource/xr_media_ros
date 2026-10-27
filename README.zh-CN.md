@@ -8,33 +8,35 @@ SDK 仓库：[xr_media](https://github.com/AgilexOpensource/xr_media)。
 
 ## 安装
 
-需要 ROS 2、Colcon、rosdep、Git 和 Python venv。将本包放入工作空间的 `src/`，以下命令从工作空间根目录执行，以 Humble 为例。
-
 ### 1. 准备环境
 
 ```bash
+mkdir -p ~/xr_media_ws/src && cd ~/xr_media_ws
+git clone https://github.com/AgilexOpensource/xr_media_ros.git src/xr_media_ros
 source /opt/ros/humble/setup.bash
 python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 ```
 
-`--system-site-packages` 用于访问 ROS Python 依赖。首次使用 rosdep 时，先执行 `sudo rosdep init` 和 `rosdep update`；已初始化时跳过 init。
+`--system-site-packages` 用于访问 ROS Python 依赖。
+
+如需装到系统 Python，跳过此处及新终端中的两条 venv 命令，其余命令不变。Ubuntu 24.04 / Jazzy 及以后，系统 pip 还需加 `--break-system-packages`。
 
 ### 2. 安装依赖
 
 ```bash
-python -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
-rosdep install --from-paths src/xr_media_ros --ignore-src --skip-keys xr_media -y
+python3 -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
+sudo apt install ros-humble-audio-common-msgs
 ```
-
-SDK 由 pip 安装，因此 rosdep 跳过 `xr_media`。`src/xr_media_ros` 按实际源码位置调整。
 
 ### 3. 构建桥接包
 
 ```bash
-colcon build --base-paths src --packages-select xr_media_ros --symlink-install
+python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
+
+`python3 -m colcon` 让节点绑定 venv 中的 Python；直接用 `colcon` 会绑定系统 Python，无法导入 `xr_media`。
 
 ## 运行
 
@@ -58,9 +60,10 @@ ros2 launch xr_media_ros xr_media.launch.py
 
 默认配置将浏览器上行发布到 `/xr_media/camera` 和 `/xr_media/audio`，再订阅回传，形成回环。按 `Ctrl+C` 停止。
 
-新终端先从工作空间根目录加载环境，再执行启动命令：
+新终端先加载环境，再执行启动命令：
 
 ```bash
+cd ~/xr_media_ws
 source /opt/ros/humble/setup.bash
 source .venv/bin/activate
 source install/setup.bash

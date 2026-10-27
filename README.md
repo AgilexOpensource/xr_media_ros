@@ -8,33 +8,35 @@ SDK repository: [xr_media](https://github.com/AgilexOpensource/xr_media).
 
 ## Installation
 
-Requires ROS 2, Colcon, rosdep, Git and Python venv. Place this package under your workspace's `src/`. Run the following commands from the workspace root, using Humble as the example.
-
 ### 1. Prepare the environment
 
 ```bash
+mkdir -p ~/xr_media_ws/src && cd ~/xr_media_ws
+git clone https://github.com/AgilexOpensource/xr_media_ros.git src/xr_media_ros
 source /opt/ros/humble/setup.bash
 python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 ```
 
-`--system-site-packages` exposes ROS Python dependencies. Before first using rosdep, run `sudo rosdep init` and `rosdep update`; skip init if already initialized.
+`--system-site-packages` exposes ROS Python dependencies.
+
+To install into the system Python instead, skip the two venv commands here and in new terminals; the remaining commands are unchanged. On Ubuntu 24.04 / Jazzy and later, system pip additionally requires `--break-system-packages`.
 
 ### 2. Install dependencies
 
 ```bash
-python -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
-rosdep install --from-paths src/xr_media_ros --ignore-src --skip-keys xr_media -y
+python3 -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
+sudo apt install ros-humble-audio-common-msgs
 ```
-
-Pip provides the SDK, so rosdep skips `xr_media`. Adjust `src/xr_media_ros` to the actual source location.
 
 ### 3. Build the bridge
 
 ```bash
-colcon build --base-paths src --packages-select xr_media_ros --symlink-install
+python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
+
+`python3 -m colcon` binds the node to the venv Python; plain `colcon` would use the system Python, which cannot import `xr_media`.
 
 ## Run
 
@@ -58,9 +60,10 @@ ros2 launch xr_media_ros xr_media.launch.py
 
 The default configuration publishes browser uplinks to `/xr_media/camera` and `/xr_media/audio`, then subscribes to them for loopback. Stop with `Ctrl+C`.
 
-In a new terminal, load the environment from the workspace root before running the launch command:
+In a new terminal, load the environment before running the launch command:
 
 ```bash
+cd ~/xr_media_ws
 source /opt/ros/humble/setup.bash
 source .venv/bin/activate
 source install/setup.bash

@@ -66,7 +66,7 @@ Only `media.video_input` accepts these local sources; replace `/camera` in the e
 
 Files follow their own frame rate and loop by default; the page supports pause, resume, stop and replay.
 
-Cameras and local video files need the SDK's OpenCV extra. Install with `python -m pip install "xr_media[opencv] @ git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'`. If Colcon provides the SDK, only add a compatible OpenCV installation to that Python environment.
+Cameras and local video files need the SDK's OpenCV extra. Install with `python3 -m pip install "xr_media[opencv] @ git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'`. If Colcon provides the SDK, only add a compatible OpenCV installation to that Python environment.
 
 ### Server parameters
 
@@ -213,19 +213,19 @@ The README installs the SDK directly from Git. Choose one alternative below if n
 
 ```bash
 git clone https://github.com/AgilexOpensource/xr_media.git /path/to/xr_media
-python -m pip install /path/to/xr_media 'numpy<2' 'setuptools<80'
+python3 -m pip install /path/to/xr_media 'numpy<2' 'setuptools<80'
 ```
 
-Replace the source path, then continue with the README's rosdep and bridge build steps.
+Replace the source path, then continue with the README's apt and bridge build steps.
 
 ### Build the SDK and bridge together with Colcon
 
 Place both source packages under the workspace's `src/`. From the workspace root, use these commands instead of the README's dependency installation and build commands:
 
 ```bash
-python -m pip install aiohttp aiortc av 'numpy<2' 'setuptools<80'
-rosdep install --from-paths src/xr_media src/xr_media_ros --ignore-src -y
-colcon build --base-paths src --packages-up-to xr_media_ros --symlink-install
+python3 -m pip install aiohttp aiortc av 'numpy<2' 'setuptools<80'
+sudo apt install ros-humble-audio-common-msgs
+python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
 
