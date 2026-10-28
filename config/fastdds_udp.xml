@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Default Fast DDS profile for xr_media_node: UDP only.
+  Fast DDS's default shared-memory segment is too small for raw camera frames
+  and drops most of them; without SHM on this side, publishers fall back to UDP.
+  All image topics of the node share one receive socket; its buffer holds one
+  raw 1920x1080 frame for each of 5 streams (1920*1080*3*5 bytes).
+  The kernel caps it at net.core.rmem_max: install 60-xr-media-udp.conf.
+-->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>udp</transport_id>
+      <type>UDPv4</type>
+      <receiveBufferSize>31104000</receiveBufferSize>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="xr_media_udp" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>udp</transport_id>
+      </userTransports>
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

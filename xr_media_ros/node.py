@@ -1,6 +1,7 @@
 """ROS 2 bridge for XR poses, controls, and WebRTC media."""
 
 import json
+import os
 import re
 import threading
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Optional
 
 import numpy as np
 import rclpy
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
 from geometry_msgs.msg import Pose, PoseArray, TransformStamped
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
@@ -404,11 +406,22 @@ class XrMediaNode(Node):
 
 
 def main(args: Optional[list] = None) -> None:
+    # Fast DDS reads the profile when the node's participant is created; an export wins.
+    try:
+        os.environ.setdefault(
+            "FASTRTPS_DEFAULT_PROFILES_FILE",
+            os.path.join(get_package_share_directory("xr_media_ros"), "config", "fastdds_udp.xml"),
+        )
+    except PackageNotFoundError:
+        pass
     rclpy.init(args=args)
     node = None
     executor = None
     try:
         node = XrMediaNode()
+        node.get_logger().info(
+            f"Fast DDS profile: {os.environ.get('FASTRTPS_DEFAULT_PROFILES_FILE', 'default')}"
+        )
         executor = MultiThreadedExecutor()
         executor.add_node(node)
         executor.spin()

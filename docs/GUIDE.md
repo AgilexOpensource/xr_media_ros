@@ -89,6 +89,42 @@ Configuration is read at startup. The server listens on all interfaces and uses 
 QoS defines delivery behavior between publishers and subscribers; use compatible
 settings when connecting other nodes.
 
+### Image transport (Fast DDS)
+
+Fast DDS's default shared-memory segment is too small for raw camera frames: on
+the same host it drops most of them (13–16 fps of 30 measured at 640x480 and
+1280x720). `xr_media_node` therefore loads the UDP-only profile
+`config/fastdds_udp.xml` at startup, which works without changing the camera
+driver. UDP also needs larger kernel receive buffers; install the shipped sysctl
+file once:
+
+```bash
+sudo cp $(ros2 pkg prefix xr_media_ros)/share/xr_media_ros/config/60-xr-media-udp.conf /etc/sysctl.d/
+sudo sysctl --system
+```
+
+| Setup | 640x480 / 1280x720 |
+|---|---|
+| Fast DDS defaults | 13 / 16 fps |
+| Node UDP only, default buffers | 10 / 10 fps |
+| Node UDP only + sysctl file | 30 / 30 fps |
+
+The profile only applies to `xr_media_node`; other nodes keep their transports
+and buffer sizes. All image topics of the node share one fixed receive buffer:
+one raw 1920x1080 frame for each of 5 streams (31104000 bytes; one frame per
+stream measured enough for raw 720p and 1080p at 30 fps). The sysctl file only
+raises the cap (`rmem_max`), not other processes' default buffers. Publishers on
+the same machine use loopback (MTU 65536), so the kernel IP fragment limits need
+no change. If raw images come from another machine over Ethernet and frames drop
+(`nstat -az IpReasmFails` grows), also raise `net.ipv4.ipfrag_high_thresh`.
+
+The node sets `FASTRTPS_DEFAULT_PROFILES_FILE` to the shipped profile before
+creating its DDS participant, so both `ros2 launch` and `ros2 run` work; an
+exported `FASTRTPS_DEFAULT_PROFILES_FILE` is kept instead. Run the node as its
+own process, not in a component container, where another node may already have
+created the participant. The profile only applies to Fast DDS (the Humble
+default RMW).
+
 ### Use your own configuration
 
 Edit `config/xr_media.yaml`, or pass another file:

@@ -87,6 +87,25 @@ xr_media_node:
 
 QoS 是发布和订阅之间的传输约定；连接其他节点时需使用兼容设置。
 
+### 图像传输（Fast DDS）
+
+Fast DDS 默认的共享内存段装不下原始相机帧，同机传输时会丢掉大部分帧（640x480 和 1280x720 实测 30 fps 中只收到 13～16 fps）。因此 `xr_media_node` 启动时会加载仅 UDP 的配置 `config/fastdds_udp.xml`，不需要改相机驱动。UDP 还需要更大的内核接收缓冲，安装一次随包附带的 sysctl 文件：
+
+```bash
+sudo cp $(ros2 pkg prefix xr_media_ros)/share/xr_media_ros/config/60-xr-media-udp.conf /etc/sysctl.d/
+sudo sysctl --system
+```
+
+| 配置 | 640x480 / 1280x720 |
+|---|---|
+| Fast DDS 默认 | 13 / 16 fps |
+| 节点仅 UDP，默认缓冲 | 10 / 10 fps |
+| 节点仅 UDP + sysctl 文件 | 30 / 30 fps |
+
+该配置只作用于 `xr_media_node`，其他节点的传输方式和缓冲大小不变。节点所有图像话题共用一个固定大小的接收缓冲：按 5 路、每路一帧 1920x1080 原始图像计（31104000 字节；实测每路一帧即可让 720p、1080p 原始图像达到 30 fps）。sysctl 文件只提高上限（`rmem_max`），不改其他进程的默认缓冲。发布者在同一台机器时走 loopback（MTU 65536），无需修改内核 IP 分片限制；若原始图像经网线来自另一台机器且出现丢帧（`nstat -az IpReasmFails` 增长），再调大 `net.ipv4.ipfrag_high_thresh`。
+
+节点在创建 DDS participant 之前把 `FASTRTPS_DEFAULT_PROFILES_FILE` 设为随包配置，因此 `ros2 launch` 和 `ros2 run` 都适用；如已导出 `FASTRTPS_DEFAULT_PROFILES_FILE` 则沿用它。节点需作为独立进程运行，不要放进 component container，否则其他节点可能已先创建 participant。该配置只对 Fast DDS（Humble 默认 RMW）生效。
+
 ### 使用自己的配置
 
 编辑 `config/xr_media.yaml`，或指定其他配置文件：
