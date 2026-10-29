@@ -140,6 +140,32 @@ ros2 run xr_media_ros xr_media_node \
   --ros-args --params-file /path/to/xr_media.yaml -p server.max_clients:=2
 ```
 
+### Example: local USB camera
+
+Publish the camera with `cam2image` from `image_tools` (installed with ROS 2 desktop). Its default size is 320x240, so set the size explicitly:
+
+```bash
+ros2 run image_tools cam2image --ros-args \
+  -p device_id:=0 -p width:=640 -p height:=480 -p frequency:=30.0 \
+  -p show_camera:=false --log-level warn -r image:=/usb_cam/image_raw
+```
+
+Create `xr_cam.yaml` that subscribes to it:
+
+```yaml
+xr_media_node:
+  ros__parameters:
+    media:
+      video_input:
+        video0: /usb_cam/image_raw
+```
+
+```bash
+ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
+```
+
+Only one program can open the camera at a time; close any browser page that is using it.
+
 ## Launch and RViz
 
 ### Launch modes

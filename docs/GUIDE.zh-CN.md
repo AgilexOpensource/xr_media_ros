@@ -121,6 +121,32 @@ ros2 run xr_media_ros xr_media_node \
   --ros-args --params-file /path/to/xr_media.yaml -p server.max_clients:=2
 ```
 
+### 示例：本机 USB 相机
+
+用 `image_tools`（随 ROS 2 desktop 安装）的 `cam2image` 发布相机图像。它默认分辨率为 320x240，需显式指定：
+
+```bash
+ros2 run image_tools cam2image --ros-args \
+  -p device_id:=0 -p width:=640 -p height:=480 -p frequency:=30.0 \
+  -p show_camera:=false --log-level warn -r image:=/usb_cam/image_raw
+```
+
+新建 `xr_cam.yaml` 订阅该话题：
+
+```yaml
+xr_media_node:
+  ros__parameters:
+    media:
+      video_input:
+        video0: /usb_cam/image_raw
+```
+
+```bash
+ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
+```
+
+相机同一时间只能被一个程序打开，使用前请关闭正在占用它的浏览器页面。
+
 ## 启动与 RViz
 
 ### 启动方式
