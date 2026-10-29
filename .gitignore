@@ -15,6 +15,7 @@ dist/
 install/
 log/
 *.pem
+tools/latency_bench/results.jsonl
 .DS_Store
 *~
 *.swp

@@ -261,11 +261,23 @@ ros2 topic echo /xr_media/status --once
 | Port already in use | Avoid duplicate bridges or change `server.port` |
 | No RViz display with a custom prefix | Update display topics and save a custom RViz configuration |
 
+### Latency reference
+
+PICO 4 Ultra system browser, WiFi, 640x480 @ 30 fps, 3 measured rounds:
+
+| Item | Typical | 95th percentile |
+|---|---|---|
+| Image (node receives → headset displays) | 105–194 ms | 153–218 ms |
+| Controller (headset capture → ROS publish) | 4–5 ms | 8–12 ms |
+| Hand (headset capture → ROS publish) | 7–8 ms | 12–16 ms |
+
+Image latency depends mainly on WiFi conditions. Test tool: [tools/latency_bench](../tools/latency_bench/README.md)
+
 ### Limitations
 
 - Clients share ROS topics and frames; namespaces are not isolated per client.
 - Only one client can use an XR session at a time.
-- See the [SDK guide](https://github.com/AgilexOpensource/xr_media) for network and browser limitations.
+- See [SDK API section 8](https://github.com/AgilexOpensource/xr_media/blob/main/docs/API.md#8-cli-browser-controls-and-access-rules) for HTTPS, certificate trust and network access limitations.
 
 ## Alternative installation methods
 

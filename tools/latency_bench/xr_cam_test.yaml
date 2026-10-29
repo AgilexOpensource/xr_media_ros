@@ -1,0 +1,7 @@
+xr_media_node:
+  ros__parameters:
+    server:
+      port: 9444
+    media:
+      video_input:
+        video0: /usb_cam/image_raw

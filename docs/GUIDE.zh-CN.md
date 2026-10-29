@@ -242,11 +242,23 @@ ros2 topic echo /xr_media/status --once
 | 启动提示端口占用 | 确认没有重复启动桥接，或修改 `server.port` |
 | 自定义前缀后 RViz 无显示 | 同步修改显示话题，保存为自定义 RViz 配置 |
 
+### 延迟参考
+
+PICO 4 Ultra 系统浏览器，WiFi，640x480 @ 30 fps，3 轮实测：
+
+| 项目 | 典型延迟 | 95% 不超过 |
+|---|---|---|
+| 图像（节点收到 → 头显显示） | 105–194 ms | 153–218 ms |
+| 手柄（头显采集 → ROS 发布） | 4–5 ms | 8–12 ms |
+| 手势（头显采集 → ROS 发布） | 7–8 ms | 12–16 ms |
+
+图像延迟主要取决于 WiFi 状况。测试工具：[tools/latency_bench](../tools/latency_bench/README.zh-CN.md)
+
 ### 使用限制
 
 - 多客户端共享 ROS 话题和坐标系，不自动隔离命名空间。
 - XR 会话仅允许一个客户端使用。
-- 网络与浏览器限制见 [SDK 文档](https://github.com/AgilexOpensource/xr_media)。
+- HTTPS、证书信任与网络访问限制见 [SDK API 文档第 8 节](https://github.com/AgilexOpensource/xr_media/blob/main/docs/API.zh-CN.md#8-cli浏览器操作与访问规则)。
 
 ## 其他安装方式
 
