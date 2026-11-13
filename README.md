@@ -1,54 +1,53 @@
 # xr_media_ros
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[中文](README.zh-CN.md)
 
-Bridge ROS 2 image and audio topics bidirectionally with browsers, and publish WebXR poses, buttons and hand joints.
+ROS 2 bridge that connects image and audio topics with browsers in both directions and publishes WebXR poses, buttons and hand joints.
 
-SDK repository: [xr_media](https://github.com/AgilexOpensource/xr_media).
+It uses the [xr_media](https://github.com/AgilexOpensource/xr_media) SDK.
 
-## Installation
+## Requirements
 
-### 1. Prepare the environment
+Tested on Ubuntu 22.04 with ROS 2 Humble.
+
+## Install
 
 ```bash
 mkdir -p ~/xr_media_ws/src && cd ~/xr_media_ws
 git clone https://github.com/AgilexOpensource/xr_media_ros.git src/xr_media_ros
-source /opt/ros/humble/setup.bash
-python3 -m venv --system-site-packages .venv
-source .venv/bin/activate
-```
-
-`--system-site-packages` exposes ROS Python dependencies.
-
-To install into the system Python instead, skip the two venv commands here and in new terminals; the remaining commands are unchanged. On Ubuntu 24.04 / Jazzy and later, system pip additionally requires `--break-system-packages`.
-
-### 2. Install dependencies
-
-```bash
-python3 -m pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
 sudo apt install ros-humble-audio-common-msgs
+source /opt/ros/humble/setup.bash
 ```
 
-### 3. Build the bridge
+Install the SDK with system pip and build:
 
 ```bash
+pip3 install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
+colcon build --symlink-install
+source install/setup.bash
+```
+
+Or, recommended to keep the system Python clean, a virtual environment that still sees the ROS Python packages:
+
+```bash
+python3 -m venv --system-site-packages ~/xr_media_ws/.venv
+source ~/xr_media_ws/.venv/bin/activate
+pip install "git+https://github.com/AgilexOpensource/xr_media.git" 'numpy<2' 'setuptools<80'
 python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
 
-`python3 -m colcon` binds the node to the venv Python; plain `colcon` would use the system Python, which cannot import `xr_media`.
+Activate the venv in every new terminal before `source install/setup.bash`. `python3 -m colcon` makes the nodes use the venv Python; plain `colcon` would use the system Python, which cannot import `xr_media` from the venv.
 
-## Run
+## Quick start
 
-### Initial certificate setup
+Create the TLS certificate once. Each run overwrites the certificate and private key, so skip it if valid certificates exist.
 
 ```bash
 xr_media --init-certs
 ```
 
-Each execution overwrites the certificate and private key; skip this step if valid certificates already exist.
-
-### Start the bridge
+Start the bridge:
 
 ```bash
 ros2 launch xr_media_ros xr_media.launch.py
@@ -56,15 +55,16 @@ ros2 launch xr_media_ros xr_media.launch.py
 
 1. Open a printed URL, trust the certificate and grant media permissions.
 2. Select a browser camera or microphone and start its uplink card.
-3. View the corresponding return card.
+3. View the matching return card.
 
-The default configuration publishes browser uplinks to `/xr_media/camera` and `/xr_media/audio`, then subscribes to them for loopback. Stop with `Ctrl+C`.
+The default configuration publishes browser uplinks to `/xr_media/camera` and `/xr_media/audio` and subscribes to them again as a loopback. Stop with `Ctrl+C`.
 
-In a new terminal, load the environment before running the launch command:
+In a new terminal, load the environment first:
 
 ```bash
 cd ~/xr_media_ws
 source /opt/ros/humble/setup.bash
+# only with the venv install
 source .venv/bin/activate
 source install/setup.bash
 ```
@@ -75,4 +75,4 @@ source install/setup.bash
 
 ## License
 
-Apache-2.0; see [LICENSE](LICENSE).
+Apache-2.0, see [LICENSE](LICENSE).
