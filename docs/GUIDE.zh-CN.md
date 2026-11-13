@@ -9,6 +9,7 @@
 - [XR 数据与话题](#xr-数据与话题)
 - [验证与常见问题](#验证与常见问题)
 - [其他安装方式](#其他安装方式)
+- [进阶：Fast DDS 图像传输](#进阶fast-dds-图像传输)
 - [关节索引参考](#关节索引参考)
 
 ## 媒体配置
@@ -48,10 +49,7 @@ xr_media_node:
         audio1: /audio
 ```
 
-同一配置组的来源不可重复；ROS 输入话题使用绝对路径。图像到达后写入最新帧缓冲，不额外限频，也不保证每条消息都发送。消息时间戳保留在 SDK 帧中，不作为浏览器跨设备同步依据。输出话题统一使用 `topic_prefix`：
-`/camera` 变为 `/xr_media/camera`，`/audio` 变为 `/xr_media/audio`。
-已经带有所配置前缀的话题不会重复添加前缀。
-卡片 ID 由配置组与来源生成，来源中的分隔符会转换为下划线。同组的 `/camera/front` 与 `/camera_front` 等来源可能产生相同 ID；发生冲突时节点拒绝启动，请调整其中一个来源名称。
+同一配置组的来源不可重复；ROS 输入话题使用绝对路径。图像到达后写入最新帧缓冲，不额外限频，也不保证每条消息都发送。消息时间戳保留在 SDK 帧中，不作为浏览器跨设备同步依据。输出话题统一使用 `topic_prefix`：`/camera` 变为 `/xr_media/camera`，`/audio` 变为 `/xr_media/audio`。已经带有所配置前缀的话题不会重复添加前缀。卡片 ID 由配置组与来源生成，来源中的分隔符会转换为下划线。同组的 `/camera/front` 与 `/camera_front` 等来源可能产生相同 ID；发生冲突时节点拒绝启动，请调整其中一个来源名称。
 
 ### 本地视频源
 
@@ -85,26 +83,7 @@ xr_media_node:
 | 视频 | `sensor_msgs/Image` | `bgr8`、`rgb8`、`mono8` | Keep Last，深度 2，Best Effort，Volatile |
 | 音频 | `audio_common_msgs/AudioData` | 16 kHz、单声道、小端有符号 16 位 PCM，无 WAV 文件头 | Keep Last，深度 10，Reliable，Volatile |
 
-QoS 是发布和订阅之间的传输约定；连接其他节点时需使用兼容设置。
-
-### 图像传输（Fast DDS）
-
-Fast DDS 默认的共享内存段装不下原始相机帧，同机传输时会丢掉大部分帧（640x480 和 1280x720 实测 30 fps 中只收到 13～16 fps）。因此 `xr_media_node` 启动时会加载仅 UDP 的配置 `config/fastdds_udp.xml`，不需要改相机驱动。UDP 还需要更大的内核接收缓冲，安装一次随包附带的 sysctl 文件：
-
-```bash
-sudo cp $(ros2 pkg prefix xr_media_ros)/share/xr_media_ros/config/60-xr-media-udp.conf /etc/sysctl.d/
-sudo sysctl --system
-```
-
-| 配置 | 640x480 / 1280x720 |
-|---|---|
-| Fast DDS 默认 | 13 / 16 fps |
-| 节点仅 UDP，默认缓冲 | 10 / 10 fps |
-| 节点仅 UDP + sysctl 文件 | 30 / 30 fps |
-
-该配置只作用于 `xr_media_node`，其他节点的传输方式和缓冲大小不变。节点所有图像话题共用一个固定大小的接收缓冲：按 5 路、每路一帧 1920x1080 原始图像计（31104000 字节；实测每路一帧即可让 720p、1080p 原始图像达到 30 fps）。sysctl 文件只提高上限（`rmem_max`），不改其他进程的默认缓冲。发布者在同一台机器时走 loopback（MTU 65536），无需修改内核 IP 分片限制；若原始图像经网线来自另一台机器且出现丢帧（`nstat -az IpReasmFails` 增长），再调大 `net.ipv4.ipfrag_high_thresh`。
-
-节点在创建 DDS participant 之前把 `FASTRTPS_DEFAULT_PROFILES_FILE` 设为随包配置，因此 `ros2 launch` 和 `ros2 run` 都适用；如已导出 `FASTRTPS_DEFAULT_PROFILES_FILE` 则沿用它。节点需作为独立进程运行，不要放进 component container，否则其他节点可能已先创建 participant。该配置只对 Fast DDS（Humble 默认 RMW）生效。
+QoS 是发布和订阅之间的传输约定；连接其他节点时需使用兼容设置。原始图像传输时节点使用仅 UDP 的 Fast DDS 配置，需要安装一次 sysctl 文件，见[进阶：Fast DDS 图像传输](#进阶fast-dds-图像传输)。
 
 ### 使用自己的配置
 
@@ -159,21 +138,11 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 
 前两种不要同时启动，否则默认端口冲突。集成启动支持 `config:=/path/to/xr_media.yaml` 和 `rviz_config:=/path/to/view.rviz`。
 
-独立可视化使用自定义前缀时，传入与桥接相同的值：
-`ros2 launch xr_media_ros xr_hand_visualizer.launch.py topic_prefix:=/custom/xr`。
-集成启动从 `config` YAML 的 `xr_media_node` 节读取 `topic_prefix`，
-未设置时依次回退到 `/**` 节和 `/xr_media`。附带 RViz 配置的话题仍为
-`/xr_media`；使用其他前缀时，在 RViz 中修改显示话题并保存，通过
-`rviz_config` 指定自己的配置文件。
+独立可视化使用自定义前缀时，传入与桥接相同的值：`ros2 launch xr_media_ros xr_hand_visualizer.launch.py topic_prefix:=/custom/xr`。集成启动从 `config` YAML 的 `xr_media_node` 节读取 `topic_prefix`，未设置时依次回退到 `/**` 节和 `/xr_media`。附带 RViz 配置的话题仍为 `/xr_media`；使用其他前缀时，在 RViz 中修改显示话题并保存，通过 `rviz_config` 指定自己的配置文件。
 
 ### 在 RViz 中查看
 
-先在头显中进入支持手部跟踪的 XR 会话。
-RViz 可直接添加 `PoseArray` 显示项订阅上述话题，`Fixed Frame` 设为
-`world`，Topic 的 `Reliability Policy` 设为 `Best Effort`，
-`Durability Policy` 设为 `Volatile`，Depth 可设为 `10`。
-直接显示各关节位姿不需要 Marker 转换节点；需要骨骼连线和彩色关节点时，
-再启动独立可视化节点并订阅 `hand_markers`。
+先在头显中进入支持手部跟踪的 XR 会话。在 RViz 中为每只手添加 `PoseArray` 显示项，`Fixed Frame` 设为 `world`，Topic 的 `Reliability Policy` 设为 `Best Effort`，`Durability Policy` 设为 `Volatile`，Depth 可设为 `10`。直接显示各关节位姿不需要 Marker 转换节点；需要骨骼连线和彩色关节点时，再启动独立可视化节点并订阅 `hand_markers`。
 
 ## XR 数据与话题
 
@@ -244,15 +213,7 @@ ros2 topic echo /xr_media/status --once
 
 ### 延迟参考
 
-PICO 4 Ultra 系统浏览器，WiFi，640x480 @ 30 fps，3 轮实测：
-
-| 项目 | 典型延迟 | 95% 不超过 |
-|---|---|---|
-| 图像（节点收到 → 头显显示） | 105–194 ms | 153–218 ms |
-| 手柄（头显采集 → ROS 发布） | 4–5 ms | 8–12 ms |
-| 手势（头显采集 → ROS 发布） | 7–8 ms | 12–16 ms |
-
-图像延迟主要取决于 WiFi 状况。测试工具：[tools/latency_bench](../tools/latency_bench/README.zh-CN.md)
+PICO 4 Ultra 经 WiFi、640x480 @ 30 fps 时，图像典型延迟为 105–194 ms，手柄与手势数据低于 10 ms；详细数据见 [PICO 4 Ultra 延迟测试报告](../tools/latency_bench/SAMPLE_REPORT_PICO4U.zh-CN.md)，测试工具见 [tools/latency_bench](../tools/latency_bench/README.zh-CN.md)。
 
 ### 使用限制
 
@@ -286,6 +247,25 @@ source install/setup.bash
 
 两个源码路径按实际位置调整。此方式不再执行 `pip install` 安装 SDK 本身。
 
+## 进阶：Fast DDS 图像传输
+
+Fast DDS 默认的共享内存段装不下原始相机帧，同机传输时会丢掉大部分帧（640x480 和 1280x720 实测 30 fps 中只收到 13～16 fps）。因此 `xr_media_node` 启动时会加载仅 UDP 的配置 `config/fastdds_udp.xml`，不需要改相机驱动。UDP 还需要更大的内核接收缓冲，安装一次随包附带的 sysctl 文件：
+
+```bash
+sudo cp $(ros2 pkg prefix xr_media_ros)/share/xr_media_ros/config/60-xr-media-udp.conf /etc/sysctl.d/
+sudo sysctl --system
+```
+
+| 配置 | 640x480 / 1280x720 |
+|---|---|
+| Fast DDS 默认 | 13 / 16 fps |
+| 节点仅 UDP，默认缓冲 | 10 / 10 fps |
+| 节点仅 UDP + sysctl 文件 | 30 / 30 fps |
+
+该配置只作用于 `xr_media_node`，其他节点的传输方式和缓冲大小不变。节点所有图像话题共用一个固定大小的接收缓冲：按 5 路、每路一帧 1920x1080 原始图像计（31104000 字节；实测每路一帧即可让 720p、1080p 原始图像达到 30 fps）。sysctl 文件只提高上限（`rmem_max`），不改其他进程的默认缓冲。发布者在同一台机器时走 loopback（MTU 65536），无需修改内核 IP 分片限制；若原始图像经网线来自另一台机器且出现丢帧（`nstat -az IpReasmFails` 增长），再调大 `net.ipv4.ipfrag_high_thresh`。
+
+节点在创建 DDS participant 之前把 `FASTRTPS_DEFAULT_PROFILES_FILE` 设为随包配置，因此 `ros2 launch` 和 `ros2 run` 都适用；如已导出 `FASTRTPS_DEFAULT_PROFILES_FILE` 则沿用它。节点需作为独立进程运行，不要放进 component container，否则其他节点可能已先创建 participant。该配置只对 Fast DDS（Humble 默认 RMW）生效。
+
 ## 关节索引参考
 
 左右手话题均使用标准 `geometry_msgs/msg/PoseArray`，不需要自定义消息包：
@@ -293,9 +273,7 @@ source install/setup.bash
 - 左手：`/xr_media/left_controller/hand`
 - 右手：`/xr_media/right_controller/hand`
 
-`poses` 使用 **从 0 开始的固定索引**，左右手顺序相同，与
-`xr_media_ros/hand_joints.py` 中的 `HAND_JOINT_NAMES` 一致。
-每个元素包含关节的位置 `position`（米）和姿态 `orientation`（四元数 x/y/z/w）。
+`poses` 使用 **从 0 开始的固定索引**，左右手顺序相同，与 `xr_media_ros/hand_joints.py` 中的 `HAND_JOINT_NAMES` 一致。每个元素包含关节的位置 `position`（米）和姿态 `orientation`（四元数 x/y/z/w）。
 
 | 索引 | WebXR 关节名称 | 部位 |
 |---:|---|---|
@@ -325,8 +303,4 @@ source install/setup.bash
 | 23 | `pinky-finger-phalanx-distal` | 小指远节 |
 | 24 | `pinky-finger-tip` | 小指指尖 |
 
-例如，`poses[4]` 是拇指指尖，`poses[9]` 是食指指尖。
-读取前必须检查 `len(poses) == 25`。未跟踪、没有关节数据或任一关节
-缺失时，不发布该侧手部消息；不发送空数组，不压缩数组，也不以零位姿填充。
-发布器和话题仍然存在，恢复完整跟踪后继续发布。
-接收端应根据时间戳判断数据是否过期。
+例如，`poses[4]` 是拇指指尖，`poses[9]` 是食指指尖。读取前必须检查 `len(poses) == 25`。未跟踪、没有关节数据或任一关节缺失时，不发布该侧手部消息；不发送空数组，不压缩数组，也不以零位姿填充。发布器和话题仍然存在，恢复完整跟踪后继续发布。接收端应根据时间戳判断数据是否过期。

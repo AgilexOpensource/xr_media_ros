@@ -9,6 +9,7 @@
 - [XR data and topics](#xr-data-and-topics)
 - [Verification and common issues](#verification-and-common-issues)
 - [Alternative installation methods](#alternative-installation-methods)
+- [Advanced: Fast DDS image transport](#advanced-fast-dds-image-transport)
 - [Joint index reference](#joint-index-reference)
 
 ## Media configuration
@@ -48,11 +49,7 @@ xr_media_node:
         audio1: /audio
 ```
 
-Sources must be unique within each group; ROS input topics must be absolute. Images update a latest-frame buffer without an added rate cap; not every message is transmitted. Source timestamps are retained in SDK frames, not a browser cross-device synchronization guarantee. Output
-topics always use `topic_prefix`: `/camera` becomes `/xr_media/camera` and
-`/audio` becomes `/xr_media/audio`. An output already beginning with the
-configured prefix is not prefixed twice.
-Card IDs combine the configuration group and source, replacing source separators with underscores. Sources such as `/camera/front` and `/camera_front` in the same group can produce identical IDs; the node rejects startup on a collision. Rename one of the sources.
+Sources must be unique within each group; ROS input topics must be absolute. Images update a latest-frame buffer without an added rate cap; not every message is transmitted. Source timestamps are retained in SDK frames, not a browser cross-device synchronization guarantee. Output topics always use `topic_prefix`: `/camera` becomes `/xr_media/camera` and `/audio` becomes `/xr_media/audio`. An output already beginning with the configured prefix is not prefixed twice. Card IDs combine the configuration group and source, replacing source separators with underscores. Sources such as `/camera/front` and `/camera_front` in the same group can produce identical IDs; the node rejects startup on a collision. Rename one of the sources.
 
 ### Local video sources
 
@@ -86,44 +83,7 @@ Configuration is read at startup. The server listens on all interfaces and uses 
 | Video | `sensor_msgs/Image` | `bgr8`, `rgb8`, `mono8` | Keep Last, depth 2, Best Effort, Volatile |
 | Audio | `audio_common_msgs/AudioData` | 16 kHz mono little-endian signed 16-bit PCM, no WAV header | Keep Last, depth 10, Reliable, Volatile |
 
-QoS defines delivery behavior between publishers and subscribers; use compatible
-settings when connecting other nodes.
-
-### Image transport (Fast DDS)
-
-Fast DDS's default shared-memory segment is too small for raw camera frames: on
-the same host it drops most of them (13–16 fps of 30 measured at 640x480 and
-1280x720). `xr_media_node` therefore loads the UDP-only profile
-`config/fastdds_udp.xml` at startup, which works without changing the camera
-driver. UDP also needs larger kernel receive buffers; install the shipped sysctl
-file once:
-
-```bash
-sudo cp $(ros2 pkg prefix xr_media_ros)/share/xr_media_ros/config/60-xr-media-udp.conf /etc/sysctl.d/
-sudo sysctl --system
-```
-
-| Setup | 640x480 / 1280x720 |
-|---|---|
-| Fast DDS defaults | 13 / 16 fps |
-| Node UDP only, default buffers | 10 / 10 fps |
-| Node UDP only + sysctl file | 30 / 30 fps |
-
-The profile only applies to `xr_media_node`; other nodes keep their transports
-and buffer sizes. All image topics of the node share one fixed receive buffer:
-one raw 1920x1080 frame for each of 5 streams (31104000 bytes; one frame per
-stream measured enough for raw 720p and 1080p at 30 fps). The sysctl file only
-raises the cap (`rmem_max`), not other processes' default buffers. Publishers on
-the same machine use loopback (MTU 65536), so the kernel IP fragment limits need
-no change. If raw images come from another machine over Ethernet and frames drop
-(`nstat -az IpReasmFails` grows), also raise `net.ipv4.ipfrag_high_thresh`.
-
-The node sets `FASTRTPS_DEFAULT_PROFILES_FILE` to the shipped profile before
-creating its DDS participant, so both `ros2 launch` and `ros2 run` work; an
-exported `FASTRTPS_DEFAULT_PROFILES_FILE` is kept instead. Run the node as its
-own process, not in a component container, where another node may already have
-created the participant. The profile only applies to Fast DDS (the Humble
-default RMW).
+QoS defines delivery behavior between publishers and subscribers; use compatible settings when connecting other nodes. For raw image throughput, the node uses a UDP-only Fast DDS profile that needs one sysctl install step; see [Advanced: Fast DDS image transport](#advanced-fast-dds-image-transport).
 
 ### Use your own configuration
 
@@ -178,21 +138,11 @@ Only one program can open the camera at a time; close any browser page that is u
 
 Do not run the first two together: their default ports conflict. The combined launch accepts `config:=/path/to/xr_media.yaml` and `rviz_config:=/path/to/view.rviz`.
 
-For a custom bridge prefix, pass the same value to the standalone visualizer:
-`ros2 launch xr_media_ros xr_hand_visualizer.launch.py topic_prefix:=/custom/xr`.
-The integrated launch reads `topic_prefix` from the `xr_media_node` section
-of its `config` YAML (falling back to `/**` and then `/xr_media`). The shipped
-RViz display topics use `/xr_media`; for another prefix, update them in RViz
-and save/pass your own `rviz_config` file.
+For a custom bridge prefix, pass the same value to the standalone visualizer: `ros2 launch xr_media_ros xr_hand_visualizer.launch.py topic_prefix:=/custom/xr`. The integrated launch reads `topic_prefix` from the `xr_media_node` section of its `config` YAML (falling back to `/**` and then `/xr_media`). The shipped RViz display topics use `/xr_media`; for another prefix, update them in RViz and save/pass your own `rviz_config` file.
 
 ### View in RViz
 
-First enter an XR session with hand tracking on the headset.
-In RViz, add a `PoseArray` display for each hand, set `Fixed Frame` to `world`,
-Topic `Reliability Policy` to `Best Effort`, `Durability Policy` to `Volatile`,
-and optionally Depth to `10`. Direct pose display does not need the Marker
-converter. For bone connections and colored joint markers, start the separate
-visualizer and subscribe to `hand_markers`.
+First enter an XR session with hand tracking on the headset. In RViz, add a `PoseArray` display for each hand, set `Fixed Frame` to `world`, Topic `Reliability Policy` to `Best Effort`, `Durability Policy` to `Volatile`, and optionally Depth to `10`. Direct pose display does not need the Marker converter. For bone connections and colored joint markers, start the separate visualizer and subscribe to `hand_markers`.
 
 ## XR data and topics
 
@@ -263,15 +213,7 @@ ros2 topic echo /xr_media/status --once
 
 ### Latency reference
 
-PICO 4 Ultra system browser, WiFi, 640x480 @ 30 fps, 3 measured rounds:
-
-| Item | Typical | 95th percentile |
-|---|---|---|
-| Image (node receives → headset displays) | 105–194 ms | 153–218 ms |
-| Controller (headset capture → ROS publish) | 4–5 ms | 8–12 ms |
-| Hand (headset capture → ROS publish) | 7–8 ms | 12–16 ms |
-
-Image latency depends mainly on WiFi conditions. Test tool: [tools/latency_bench](../tools/latency_bench/README.md)
+On a PICO 4 Ultra over WiFi at 640x480 @ 30 fps, typical latency is 105–194 ms for images and under 10 ms for controller and hand data; see the [PICO 4 Ultra latency report](../tools/latency_bench/SAMPLE_REPORT_PICO4U.md) for details and [tools/latency_bench](../tools/latency_bench/README.md) for the test tool.
 
 ### Limitations
 
@@ -305,49 +247,60 @@ source install/setup.bash
 
 Adjust both source paths to their actual locations. Do not also install the SDK itself with pip in this workflow.
 
+## Advanced: Fast DDS image transport
+
+Fast DDS's default shared-memory segment is too small for raw camera frames: on the same host it drops most of them (13–16 fps of 30 measured at 640x480 and 1280x720). `xr_media_node` therefore loads the UDP-only profile `config/fastdds_udp.xml` at startup, which works without changing the camera driver. UDP also needs larger kernel receive buffers; install the shipped sysctl file once:
+
+```bash
+sudo cp $(ros2 pkg prefix xr_media_ros)/share/xr_media_ros/config/60-xr-media-udp.conf /etc/sysctl.d/
+sudo sysctl --system
+```
+
+| Setup | 640x480 / 1280x720 |
+|---|---|
+| Fast DDS defaults | 13 / 16 fps |
+| Node UDP only, default buffers | 10 / 10 fps |
+| Node UDP only + sysctl file | 30 / 30 fps |
+
+The profile only applies to `xr_media_node`; other nodes keep their transports and buffer sizes. All image topics of the node share one fixed receive buffer: one raw 1920x1080 frame for each of 5 streams (31104000 bytes; one frame per stream measured enough for raw 720p and 1080p at 30 fps). The sysctl file only raises the cap (`rmem_max`), not other processes' default buffers. Publishers on the same machine use loopback (MTU 65536), so the kernel IP fragment limits need no change. If raw images come from another machine over Ethernet and frames drop (`nstat -az IpReasmFails` grows), also raise `net.ipv4.ipfrag_high_thresh`.
+
+The node sets `FASTRTPS_DEFAULT_PROFILES_FILE` to the shipped profile before creating its DDS participant, so both `ros2 launch` and `ros2 run` work; an exported `FASTRTPS_DEFAULT_PROFILES_FILE` is kept instead. Run the node as its own process, not in a component container, where another node may already have created the participant. The profile only applies to Fast DDS (the Humble default RMW).
+
 ## Joint index reference
 
-Both hands use standard `geometry_msgs/msg/PoseArray`; no custom message
-package is required:
+Both hands use standard `geometry_msgs/msg/PoseArray`; no custom message package is required:
 
 - Left: `/xr_media/left_controller/hand`
 - Right: `/xr_media/right_controller/hand`
 
-`poses` uses **fixed, zero-based indices**, identical for both hands and matching
-`HAND_JOINT_NAMES` in `xr_media_ros/hand_joints.py`. Each element contains
-`position` in metres and `orientation` as an x/y/z/w quaternion.
+`poses` uses **fixed, zero-based indices**, identical for both hands and matching `HAND_JOINT_NAMES` in `xr_media_ros/hand_joints.py`. Each element contains `position` in metres and `orientation` as an x/y/z/w quaternion.
 
-| Index | WebXR joint name |
-|---:|---|
-| 0 | `wrist` |
-| 1 | `thumb-metacarpal` |
-| 2 | `thumb-phalanx-proximal` |
-| 3 | `thumb-phalanx-distal` |
-| 4 | `thumb-tip` |
-| 5 | `index-finger-metacarpal` |
-| 6 | `index-finger-phalanx-proximal` |
-| 7 | `index-finger-phalanx-intermediate` |
-| 8 | `index-finger-phalanx-distal` |
-| 9 | `index-finger-tip` |
-| 10 | `middle-finger-metacarpal` |
-| 11 | `middle-finger-phalanx-proximal` |
-| 12 | `middle-finger-phalanx-intermediate` |
-| 13 | `middle-finger-phalanx-distal` |
-| 14 | `middle-finger-tip` |
-| 15 | `ring-finger-metacarpal` |
-| 16 | `ring-finger-phalanx-proximal` |
-| 17 | `ring-finger-phalanx-intermediate` |
-| 18 | `ring-finger-phalanx-distal` |
-| 19 | `ring-finger-tip` |
-| 20 | `pinky-finger-metacarpal` |
-| 21 | `pinky-finger-phalanx-proximal` |
-| 22 | `pinky-finger-phalanx-intermediate` |
-| 23 | `pinky-finger-phalanx-distal` |
-| 24 | `pinky-finger-tip` |
+| Index | WebXR joint name | Part |
+|---:|---|---|
+| 0 | `wrist` | Wrist |
+| 1 | `thumb-metacarpal` | Thumb metacarpal |
+| 2 | `thumb-phalanx-proximal` | Thumb proximal phalanx |
+| 3 | `thumb-phalanx-distal` | Thumb distal phalanx |
+| 4 | `thumb-tip` | Thumb tip |
+| 5 | `index-finger-metacarpal` | Index finger metacarpal |
+| 6 | `index-finger-phalanx-proximal` | Index finger proximal phalanx |
+| 7 | `index-finger-phalanx-intermediate` | Index finger intermediate phalanx |
+| 8 | `index-finger-phalanx-distal` | Index finger distal phalanx |
+| 9 | `index-finger-tip` | Index finger tip |
+| 10 | `middle-finger-metacarpal` | Middle finger metacarpal |
+| 11 | `middle-finger-phalanx-proximal` | Middle finger proximal phalanx |
+| 12 | `middle-finger-phalanx-intermediate` | Middle finger intermediate phalanx |
+| 13 | `middle-finger-phalanx-distal` | Middle finger distal phalanx |
+| 14 | `middle-finger-tip` | Middle finger tip |
+| 15 | `ring-finger-metacarpal` | Ring finger metacarpal |
+| 16 | `ring-finger-phalanx-proximal` | Ring finger proximal phalanx |
+| 17 | `ring-finger-phalanx-intermediate` | Ring finger intermediate phalanx |
+| 18 | `ring-finger-phalanx-distal` | Ring finger distal phalanx |
+| 19 | `ring-finger-tip` | Ring finger tip |
+| 20 | `pinky-finger-metacarpal` | Little finger metacarpal |
+| 21 | `pinky-finger-phalanx-proximal` | Little finger proximal phalanx |
+| 22 | `pinky-finger-phalanx-intermediate` | Little finger intermediate phalanx |
+| 23 | `pinky-finger-phalanx-distal` | Little finger distal phalanx |
+| 24 | `pinky-finger-tip` | Little finger tip |
 
-For example, `poses[4]` is the thumb tip and `poses[9]` is the index finger tip.
-Check `len(poses) == 25` before accessing joints. If tracking is lost, no joint
-data is available, or any joint is missing, no message is published for that
-hand. The bridge never sends empty arrays, compacts indices, or inserts zero
-poses. The publisher and topic remain available, and publication resumes when
-complete tracking returns. Consumers should use timestamps to detect stale data.
+For example, `poses[4]` is the thumb tip and `poses[9]` is the index finger tip. Check `len(poses) == 25` before accessing joints. If tracking is lost, no joint data is available, or any joint is missing, no message is published for that hand. The bridge never sends empty arrays, compacts indices, or inserts zero poses. The publisher and topic remain available, and publication resumes when complete tracking returns. Consumers should use timestamps to detect stale data.
