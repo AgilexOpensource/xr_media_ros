@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import signal
 import threading
 from pathlib import Path
 from types import SimpleNamespace
@@ -428,6 +429,9 @@ def main(args: Optional[list] = None) -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
+        # ros2 launch can deliver a second SIGINT (terminal + launch); don't let it abort cleanup.
+        # SIGTERM/SIGKILL escalation from launch still applies if cleanup hangs.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             try:
                 if executor is not None:

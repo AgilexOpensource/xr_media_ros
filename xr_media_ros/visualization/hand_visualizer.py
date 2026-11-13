@@ -1,5 +1,7 @@
 """Convert typed XR hand messages to RViz MarkerArray messages."""
 
+import signal
+
 from geometry_msgs.msg import Point, PoseArray
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException
@@ -122,6 +124,8 @@ def main(args=None) -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
+        # ros2 launch can deliver a second SIGINT; don't let it abort cleanup.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             if node is not None:
                 node.destroy_node()
