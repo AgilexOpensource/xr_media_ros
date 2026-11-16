@@ -72,7 +72,7 @@ xr_media_node:
 | `topic_prefix` | `/xr_media` | 发布话题及坐标系名称前缀 |
 | `server.port` | `9443` | TCP 端口，1–65535 |
 | `server.max_clients` | `1` | 正整数；内置 YAML 显式配置为 **2** |
-| `server.cert_path` / `server.key_path` | 空字符串 | 自动查找用户 TLS 目录；自定义时成对指定 |
+| `server.cert_path` / `server.key_path` | 空字符串 | 为空时使用用户 TLS 目录中的 `cert.pem`／`key.pem`（`xr_media --init-certs` 生成）；自定义时成对指定。任一文件缺失时节点退出 |
 
 配置在启动时读取，服务监听所有网卡，视频编码为 H.264。
 
@@ -155,6 +155,7 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 | `/xr_media/{side}_controller/hand` | `geometry_msgs/msg/PoseArray` | 该手完整的 25 个关节可用时发布 |
 | `/xr_media/{side}_controller/hand_markers` | `visualization_msgs/msg/MarkerArray` | 独立可视化节点根据手部消息生成 |
 | `/xr_media/status` | `std_msgs/msg/String` | 每秒发布 JSON 统计，不要求进入 XR |
+| `/xr_media/{side}_controller/haptic` | `std_msgs/msg/Float32MultiArray` | 订阅。`data = [强度, 时长_ms]` 让该侧手柄震动一次，见下文 |
 
 ### 坐标与时间戳
 - 位姿已从 WebXR 转为 Z-up：+X 向前、+Y 向左、+Z 向上。
@@ -189,6 +190,14 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 - 手部跟踪模式下，捏合映射到扳机输入，不代表存在实体按键；浏览器合成的手部 gamepad 值会被忽略。
 - 仅在对应控制器或手被跟踪时发布；接收端应判断消息是否过期。
 
+### 手柄震动
+
+向 `/xr_media/{side}_controller/haptic` 发布 `data = [强度, 时长_ms]`：强度截断到 0–1，时长截断到 0–5000 ms，新的震动会覆盖仍在进行的震动；数组长度不对时忽略并警告。投递为尽力而为：没有 XR 会话、处于手势追踪或设备没有震动器时不会震动。已在 Quest 3 浏览器、PICO 4 Ultra 的 PICO 浏览器和 Wolvic 上验证；浏览器差异见 xr_media 的 API 文档。
+
+```bash
+ros2 topic pub --once /xr_media/right_controller/haptic std_msgs/msg/Float32MultiArray "{data: [0.8, 80.0]}"
+```
+
 ## 验证与常见问题
 
 启动视频上行后，在已加载 ROS 环境的另一终端检查：
@@ -208,6 +217,7 @@ ros2 topic echo /xr_media/status --once
 | RViz 收不到图像 | 订阅 QoS 设为 Best Effort、Volatile；图像深度为 2 |
 | 音频异常 | 使用 16 kHz 单声道小端 int16 PCM；每 20 ms 对应 320 样本／640 字节 |
 | 手部话题暂时无数据 | 进入 XR 并确认该手完整跟踪；缺失关节时不发布 |
+| 启动报 `TLS certificate not found` | 执行 `xr_media --init-certs`，或修正 `server.cert_path`／`server.key_path` |
 | 启动提示端口占用 | 确认没有重复启动桥接，或修改 `server.port` |
 | 自定义前缀后 RViz 无显示 | 同步修改显示话题，保存为自定义 RViz 配置 |
 

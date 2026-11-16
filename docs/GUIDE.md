@@ -72,7 +72,7 @@ Cameras and local video files need the SDK's OpenCV extra. Install with `python3
 | `topic_prefix` | `/xr_media` | Prefix for published topics and frame names |
 | `server.port` | `9443` | TCP port, 1–65535 |
 | `server.max_clients` | `1` | Positive integer; the shipped YAML explicitly sets **2** |
-| `server.cert_path` / `server.key_path` | Empty strings | Discover user TLS files; supply both for custom paths |
+| `server.cert_path` / `server.key_path` | Empty strings | Empty uses `cert.pem` / `key.pem` in the user TLS directory (`xr_media --init-certs`); custom paths must be set together. The node exits if either file is missing |
 
 Configuration is read at startup. The server listens on all interfaces and uses H.264 video.
 
@@ -155,6 +155,7 @@ The default prefix is `/xr_media`. `{side}` is `left` or `right`; `{role}` is `h
 | `/xr_media/{side}_controller/hand` | `geometry_msgs/msg/PoseArray` | Published when all 25 hand joints are available |
 | `/xr_media/{side}_controller/hand_markers` | `visualization_msgs/msg/MarkerArray` | Generated from hand messages by the separate visualizer |
 | `/xr_media/status` | `std_msgs/msg/String` | JSON statistics every second; no XR session required |
+| `/xr_media/{side}_controller/haptic` | `std_msgs/msg/Float32MultiArray` | Subscribed. `data = [intensity, duration_ms]` pulses that controller once; see below |
 
 ### Coordinates and timestamps
 - Poses are converted from WebXR to Z-up: +X forward, +Y left, +Z up.
@@ -189,6 +190,14 @@ The default prefix is `/xr_media`. `{side}` is `left` or `right`; `{role}` is `h
 - In hand-tracking mode, a pinch maps to trigger input rather than a physical button; browser-synthesized hand gamepad values are ignored.
 - Messages are published only while the corresponding controller or hand is tracked; consumers should check for stale data.
 
+### Controller vibration
+
+Publish `data = [intensity, duration_ms]` to `/xr_media/{side}_controller/haptic`; intensity is clipped to 0–1 and the duration to 0–5000 ms, and a new pulse replaces one still running. Another array length is ignored with a warning. Delivery is best effort: nothing happens without a connected XR session, in hand tracking, or on a device without a haptic actuator. Verified on Quest 3 Browser, PICO 4 Ultra PICO Browser and Wolvic; see the xr_media API doc for browser quirks.
+
+```bash
+ros2 topic pub --once /xr_media/right_controller/haptic std_msgs/msg/Float32MultiArray "{data: [0.8, 80.0]}"
+```
+
 ## Verification and common issues
 
 After starting a video uplink, check from another terminal with the ROS environment loaded:
@@ -208,6 +217,7 @@ ros2 topic echo /xr_media/status --once
 | RViz receives no image | Select Best Effort and Volatile; image queue depth is 2 |
 | Incorrect audio | Use 16 kHz mono little-endian int16 PCM; 20 ms is 320 samples / 640 bytes |
 | No hand messages | Enter XR and check complete tracking; missing joints suppress publication |
+| `TLS certificate not found` at startup | Run `xr_media --init-certs`, or fix `server.cert_path` / `server.key_path` |
 | Port already in use | Avoid duplicate bridges or change `server.port` |
 | No RViz display with a custom prefix | Update display topics and save a custom RViz configuration |
 

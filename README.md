@@ -41,7 +41,7 @@ Activate the venv in every new terminal before `source install/setup.bash`. `pyt
 
 ## Quick start
 
-Create the TLS certificate once. Each run overwrites the certificate and private key, so skip it if valid certificates exist.
+Create the TLS certificate once. Each run overwrites the certificate and private key, so skip it if valid certificates exist. WebXR requires HTTPS, so the node exits with an error when the certificate is missing instead of serving HTTP.
 
 ```bash
 xr_media --init-certs

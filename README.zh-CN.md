@@ -41,7 +41,7 @@ source install/setup.bash
 
 ## 快速开始
 
-首次使用先生成 TLS 证书。每次执行都会覆盖证书和私钥，已有可用证书时跳过此步。
+首次使用先生成 TLS 证书。每次执行都会覆盖证书和私钥，已有可用证书时跳过此步。WebXR 必须使用 HTTPS，缺少证书时节点报错退出，不会退回 HTTP。
 
 ```bash
 xr_media --init-certs

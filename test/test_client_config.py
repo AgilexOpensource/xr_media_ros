@@ -1,9 +1,12 @@
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 import rclpy
+from sensor_msgs.msg import Image
+from std_msgs.msg import Float32MultiArray
 
-from xr_media_ros.node import XrMediaNode
+from xr_media_ros.node import TlsCertificateError, XrMediaNode
 
 
 def test_video_subscription_uses_shared_depth_two_qos():
@@ -14,11 +17,12 @@ def test_video_subscription_uses_shared_depth_two_qos():
             XrMediaNode, "create_subscription"
         ) as subscribe:
             node = XrMediaNode()
-            subscribe.assert_called_once()
-            qos = subscribe.call_args.args[3]
+            images = [c for c in subscribe.call_args_list if c.args[0] is Image]
+            assert len(images) == 1
+            qos = images[0].args[3]
             assert qos.depth == 2
             assert qos is node._video_qos
-            assert subscribe.call_args.kwargs["callback_group"] is node._media_group
+            assert images[0].kwargs["callback_group"] is node._media_group
             assert node._hand_qos.depth == 10
     finally:
         if node is not None:
@@ -66,3 +70,54 @@ def test_invalid_client_limit(limit):
             server.assert_not_called()
     finally:
         rclpy.try_shutdown()
+
+
+def test_missing_default_certificate_stops_startup(default_tls_files):
+    (default_tls_files / "key.pem").unlink()
+    rclpy.init(args=[])
+    try:
+        with patch("xr_media_ros.node.XrMediaServer") as server:
+            with pytest.raises(TlsCertificateError, match="key.pem.*xr_media --init-certs"):
+                XrMediaNode()
+            server.assert_not_called()
+    finally:
+        rclpy.try_shutdown()
+
+
+def test_custom_certificate_paths_must_exist_and_be_paired(tmp_path):
+    cert, key = tmp_path / "c.pem", tmp_path / "k.pem"
+    cert.write_text("cert", encoding="utf-8")
+    for params, error in (([f"server.cert_path:={cert}"], ValueError),
+                          ([f"server.cert_path:={cert}", f"server.key_path:={key}"], TlsCertificateError)):
+        args = ["--ros-args"] + [x for p in params for x in ("-p", p)]
+        rclpy.init(args=args)
+        try:
+            with patch("xr_media_ros.node.XrMediaServer") as server:
+                with pytest.raises(error):
+                    XrMediaNode()
+                server.assert_not_called()
+        finally:
+            rclpy.try_shutdown()
+    key.write_text("key", encoding="utf-8")
+    rclpy.init(args=["--ros-args", "-p", f"server.cert_path:={cert}", "-p", f"server.key_path:={key}"])
+    node = None
+    try:
+        with patch("xr_media_ros.node.XrMediaServer") as server:
+            node = XrMediaNode()
+            config = server.call_args.args[0]
+            assert (config.cert_path, config.key_path) == (cert, key)
+    finally:
+        if node is not None:
+            node.destroy_node()
+        rclpy.try_shutdown()
+
+
+def test_haptic_topic_reaches_the_server():
+    node = SimpleNamespace(_server=MagicMock(), get_logger=MagicMock())
+    XrMediaNode._on_haptic(node, "left", Float32MultiArray(data=[0.8, 80.0]))
+    node._server.send_haptic.assert_called_once()
+    side, intensity, duration = node._server.send_haptic.call_args.args
+    assert side == "left" and intensity == pytest.approx(0.8) and duration == 80.0
+    XrMediaNode._on_haptic(node, "right", Float32MultiArray(data=[0.8]))
+    assert node._server.send_haptic.call_count == 1
+    node.get_logger.return_value.warn.assert_called_once()

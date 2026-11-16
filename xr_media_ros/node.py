@@ -18,10 +18,11 @@ from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Image, Joy
-from std_msgs.msg import String
+from std_msgs.msg import Float32MultiArray, String
 from tf2_ros import TransformBroadcaster
 from xr_media import AudioFrame, HandInput, MediaServerConfig, RigidPose, XrMediaServer
 from xr_media.cli import _CaptureControl, _capture_worker, _open_capture, _video_test
+from xr_media.paths import tls_dir
 
 from .hand_joints import HAND_JOINT_NAMES
 from .image_adapter import frame_to_image, image_to_frame
@@ -39,6 +40,27 @@ def _prefix(value: str) -> str:
     return value if value.startswith("/") else "/" + value
 
 
+class TlsCertificateError(FileNotFoundError):
+    """The TLS certificate or key is missing; WebXR needs HTTPS, so the node does not start."""
+
+
+def _tls_files(cert: str, key: str):
+    if bool(cert) != bool(key):
+        raise ValueError("server.cert_path and server.key_path must be set together")
+    if cert:
+        paths = (Path(cert).expanduser(), Path(key).expanduser())
+    else:
+        paths = (tls_dir() / "cert.pem", tls_dir() / "key.pem")
+    missing = [str(path) for path in paths if not path.is_file()]
+    if missing:
+        raise TlsCertificateError(
+            "TLS certificate not found: %s. WebXR requires HTTPS, so the node does not fall back to "
+            "HTTP. Create the default certificate with `xr_media --init-certs`, or set "
+            "server.cert_path and server.key_path." % ", ".join(missing)
+        )
+    return paths
+
+
 class XrMediaNode(Node):
     """Serve ROS camera streams and publish browser WebXR data."""
 
@@ -50,6 +72,8 @@ class XrMediaNode(Node):
         max_clients = self.get_parameter("server.max_clients").value
         if type(max_clients) is not int or max_clients < 1:
             raise ValueError("server.max_clients must be a positive integer")
+        cert, key = _tls_files(str(self.get_parameter("server.cert_path").value),
+                               str(self.get_parameter("server.key_path").value))
         self._media_group = MutuallyExclusiveCallbackGroup()
         self._conversion_errors = 0
         self._xr_samples = 0
@@ -93,15 +117,13 @@ class XrMediaNode(Node):
             String, f"{self._prefix}/status", 10
         )
 
-        cert = str(self.get_parameter("server.cert_path").value)
-        key = str(self.get_parameter("server.key_path").value)
         config = MediaServerConfig(
             host="0.0.0.0",
             port=int(self.get_parameter("server.port").value),
             codec="h264",
             max_clients=max_clients,
-            cert_path=Path(cert) if cert else None,
-            key_path=Path(key) if key else None,
+            cert_path=cert,
+            key_path=key,
         )
         self._server = XrMediaServer(
             config,
@@ -112,7 +134,14 @@ class XrMediaNode(Node):
         self._source_captures = []
         try:
             self._server.start_background()
-            self._subscriptions = self._create_media_endpoints()
+            # Not self._subscriptions: rclpy's Node keeps its own subscription list under that name.
+            self._media_subscriptions = self._create_media_endpoints()
+            self._haptic_subscriptions = [
+                self.create_subscription(
+                    Float32MultiArray, f"{self._prefix}/{side}_controller/haptic",
+                    lambda msg, s=side: self._on_haptic(s, msg), 10,
+                ) for side in ("left", "right")
+            ]
             for worker in self._source_workers:
                 worker.start()
         except Exception:
@@ -392,6 +421,15 @@ class XrMediaNode(Node):
         ]
         return message
 
+    def _on_haptic(self, side: str, msg: Float32MultiArray) -> None:
+        """``data = [intensity 0-1, duration_ms]`` pulses that controller once."""
+        try:
+            if len(msg.data) != 2:
+                raise ValueError("haptic data must be [intensity, duration_ms]")
+            self._server.send_haptic(side, msg.data[0], msg.data[1])
+        except ValueError as exc:
+            self.get_logger().warn("%s haptic ignored: %s" % (side, exc), throttle_duration_sec=5.0)
+
     def _publish_status(self) -> None:
         status = self._server.get_stats().__dict__.copy()
         status.update(self._server.get_xr_stats())
@@ -418,6 +456,7 @@ def main(args: Optional[list] = None) -> None:
     rclpy.init(args=args)
     node = None
     executor = None
+    exit_code = 0
     try:
         node = XrMediaNode()
         node.get_logger().info(
@@ -428,6 +467,9 @@ def main(args: Optional[list] = None) -> None:
         executor.spin()
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except TlsCertificateError as exc:
+        rclpy.logging.get_logger("xr_media_node").fatal(str(exc))
+        exit_code = 1
     finally:
         # ros2 launch can deliver a second SIGINT (terminal + launch); don't let it abort cleanup.
         # SIGTERM/SIGKILL escalation from launch still applies if cleanup hangs.
@@ -441,6 +483,8 @@ def main(args: Optional[list] = None) -> None:
                     node.destroy_node()
         finally:
             rclpy.try_shutdown()
+    if exit_code:
+        raise SystemExit(exit_code)
 
 
 if __name__ == "__main__":
