@@ -1,6 +1,6 @@
 # xr_media_ros 延迟测试工具
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md)
 
 测量两项延迟，不修改 `xr_media_ros` 和 `xr_media` 源码：
 

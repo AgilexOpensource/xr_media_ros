@@ -1,6 +1,6 @@
 # xr_media_ros 延迟测试报告（PICO 4 Ultra）
 
-[English](SAMPLE_REPORT_PICO4U.md) | [简体中文](SAMPLE_REPORT_PICO4U.zh-CN.md)
+[English](SAMPLE_REPORT_PICO4U.md)
 
 测试日期：2026-10-29，共 3 轮。
 

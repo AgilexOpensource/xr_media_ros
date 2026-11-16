@@ -1,6 +1,6 @@
 # xr_media_ros latency test report (PICO 4 Ultra)
 
-[English](SAMPLE_REPORT_PICO4U.md) | [简体中文](SAMPLE_REPORT_PICO4U.zh-CN.md)
+[中文](SAMPLE_REPORT_PICO4U.zh-CN.md)
 
 Test date: 2026-10-29, 3 rounds.
 

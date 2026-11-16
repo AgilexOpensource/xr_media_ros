@@ -1,6 +1,6 @@
 # ROS 2 使用指南
 
-[English](GUIDE.md) | [简体中文](GUIDE.zh-CN.md) · [返回首页](../README.zh-CN.md)
+[English](GUIDE.md) · [返回首页](../README.zh-CN.md)
 
 ## 目录
 

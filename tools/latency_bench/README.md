@@ -1,6 +1,6 @@
 # xr_media_ros latency test tool
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[中文](README.zh-CN.md)
 
 Measures two latencies without modifying the `xr_media_ros` or `xr_media` source:
 
