@@ -192,10 +192,10 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 
 ### 手柄震动
 
-向 `/xr_media/{side}_controller/haptic` 发布 `data = [强度, 时长_ms]`：强度截断到 0–1，时长截断到 0–5000 ms，新的震动会覆盖仍在进行的震动；数组长度不对时忽略并警告。投递为尽力而为：没有 XR 会话、处于手势追踪或设备没有震动器时不会震动。已在 Quest 3 浏览器、PICO 4 Ultra 的 PICO 浏览器和 Wolvic 上验证；浏览器差异见 xr_media 的 API 文档。
+向 `/xr_media/{side}_controller/haptic` 发布 `data = [强度, 时长_ms]`：强度截断到 0–1，时长截断到 0–5000 ms；数组长度不对时忽略并警告。投递为尽力而为：没有 XR 会话、处于手势追踪或设备没有震动器时不会震动。已在 Quest 3 浏览器、PICO 浏览器（PICO 4 Ultra）和 Wolvic 上验证；浏览器差异见 [xr_media API 文档](https://github.com/AgilexOpensource/xr_media/blob/main/docs/API.zh-CN.md#手柄震动)。
 
 ```bash
-ros2 topic pub --once /xr_media/right_controller/haptic std_msgs/msg/Float32MultiArray "{data: [0.8, 80.0]}"
+ros2 topic pub --once /xr_media/right_controller/haptic std_msgs/msg/Float32MultiArray "{data: [1.0, 100.0]}"
 ```
 
 ## 验证与常见问题

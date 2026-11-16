@@ -192,10 +192,10 @@ The default prefix is `/xr_media`. `{side}` is `left` or `right`; `{role}` is `h
 
 ### Controller vibration
 
-Publish `data = [intensity, duration_ms]` to `/xr_media/{side}_controller/haptic`; intensity is clipped to 0–1 and the duration to 0–5000 ms, and a new pulse replaces one still running. Another array length is ignored with a warning. Delivery is best effort: nothing happens without a connected XR session, in hand tracking, or on a device without a haptic actuator. Verified on Quest 3 Browser, PICO 4 Ultra PICO Browser and Wolvic; see the xr_media API doc for browser quirks.
+Publish `data = [intensity, duration_ms]` to `/xr_media/{side}_controller/haptic`. Intensity is clipped to 0–1 and the duration to 0–5000 ms. Another array length is ignored with a warning. Delivery is best effort: nothing happens without a connected XR session, in hand tracking, or on a device without a haptic actuator. Verified on Quest 3 Browser, PICO Browser (PICO 4 Ultra) and Wolvic; the [xr_media API doc](https://github.com/AgilexOpensource/xr_media/blob/main/docs/API.md#controller-vibration) lists browser differences.
 
 ```bash
-ros2 topic pub --once /xr_media/right_controller/haptic std_msgs/msg/Float32MultiArray "{data: [0.8, 80.0]}"
+ros2 topic pub --once /xr_media/right_controller/haptic std_msgs/msg/Float32MultiArray "{data: [1.0, 100.0]}"
 ```
 
 ## Verification and common issues
