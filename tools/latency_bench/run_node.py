@@ -25,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 RESULTS = HERE / "results.jsonl"
 COLS, ROWS, CELL = 8, 6, 20
 XR_IDLE_MS = 3000
-MODE = {"controller": "手柄", "hand": "手势", "none": "无输入"}
+MODE = {"controller": "controller", "hand": "hand tracking", "none": "no input"}
 
 _lock = threading.Lock()
 _xr_rows = []

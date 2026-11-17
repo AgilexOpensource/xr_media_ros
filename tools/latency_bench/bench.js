@@ -80,7 +80,7 @@
   function show(html) { panel.innerHTML = html; }
   const table = (rows) => `<table>${rows.map((r, i) => `<tr>${r.map((c) => (i ? `<td>${c}</td>` : `<th>${c}</th>`)).join("")}</tr>`).join("")}</table>`;
   let videoHtml = "", xrHtml = "";
-  const render = (status) => show(`<b>延迟测试</b><div>${status}</div>${videoHtml}${xrHtml}`);
+  const render = (status) => show(`<b>Latency test</b><div>${status}</div>${videoHtml}${xrHtml}`);
 
   async function inboundStats() {
     for (const pc of [...pcs].reverse()) {
@@ -102,7 +102,7 @@
   }
 
   async function runVideo() {
-    render("等待视频…");
+    render("Waiting for video…");
     const video = await waitVideo();
     const src = await (await fetch("/bench/video_log")).json();
     const scale = video.videoWidth / (src.width || video.videoWidth);
@@ -127,11 +127,11 @@
       video.requestVideoFrameCallback(onFrame);
     };
     video.requestVideoFrameCallback(onFrame);
-    render("预热…");
+    render("Warming up…");
     await sleep(WARM);
     const s0 = await inboundStats(), t0 = nowMs();
     measuring = true;
-    render("图像采样中（20 s），保持页面在前台…");
+    render("Sampling video (20 s); keep the page in the foreground…");
     await sleep(SECS);
     measuring = false;
     alive = false;
@@ -151,16 +151,16 @@
       sync_err_ms: sync?.rtt / 2,
     };
     post("/bench/video_result", r);
-    videoHtml = "<p>图像：节点收到话题 → 头显显示</p>" + table([
-      ["项目", "值"],
-      ["延迟（到画布绘制）中位 / P95 / 最大 ms", `${f(r.median)} / ${f(r.p95)} / ${f(r.max)}`],
-      ["延迟（到视频帧就绪）中位 ms", f(r.shown_median)],
-      ["jitter buffer / 解码 ms", `${f(r.jitter_buffer_ms)} / ${f(r.decode_ms)}`],
-      ["源分辨率 / 节点收帧 fps", `${r.source_res} / ${f(r.node_recv_fps)}`],
-      ["头显解码分辨率 / 显示 fps", `${r.decoded_res} / ${f(r.display_fps)}`],
-      ["码率 Mbit/s / 丢包 / 丢帧", `${f(r.mbps, 2)} / ${r.packets_lost} / ${r.frames_dropped}`],
-      ["相机时间戳→节点收到 ms", f(r.cam_stamp_to_recv_ms)],
-      ["样本 / 解码失败 / 时钟误差 ±ms", `${r.n} / ${bad} / ${f(r.sync_err_ms)}`],
+    videoHtml = "<p>Video: node receives topic → headset display</p>" + table([
+      ["Item", "Value"],
+      ["Latency to canvas draw, median / P95 / max ms", `${f(r.median)} / ${f(r.p95)} / ${f(r.max)}`],
+      ["Latency to video frame ready, median ms", f(r.shown_median)],
+      ["Jitter buffer / decode ms", `${f(r.jitter_buffer_ms)} / ${f(r.decode_ms)}`],
+      ["Source resolution / node receive fps", `${r.source_res} / ${f(r.node_recv_fps)}`],
+      ["Headset decoded resolution / display fps", `${r.decoded_res} / ${f(r.display_fps)}`],
+      ["Bitrate Mbit/s / packets lost / frames dropped", `${f(r.mbps, 2)} / ${r.packets_lost} / ${r.frames_dropped}`],
+      ["Camera stamp → node receive ms", f(r.cam_stamp_to_recv_ms)],
+      ["Samples / decode failures / clock error ±ms", `${r.n} / ${bad} / ${f(r.sync_err_ms)}`],
     ]);
   }
 
@@ -171,11 +171,11 @@
       const r = await (await fetch("/bench/xr_last")).json();
       if (r.id === seen) continue;
       seen = r.id;
-      const rows = [["模式", "样本", "Hz", "总延迟 中位/P95/最大 ms", "头显→节点 中位", "节点内发布 中位"]];
+      const rows = [["Mode", "Samples", "Hz", "Total latency median/P95/max ms", "Headset → node median", "In-node publish median"]];
       for (const g of r.groups) rows.push([g.mode, g.total.n, f(g.hz), `${f(g.total.median)} / ${f(g.total.p95)} / ${f(g.total.max)}`, f(g.to_node.median), f(g.ros_publish.median, 2)]);
-      xrHtml = `<p>VR 数据：头显采集 → ROS 发布（${f(r.duration_s, 0)} s）</p>` + table(rows) +
-        `<div>时钟误差 ±${f(r.sync_err_ms)} ms，漂移 ${f(r.offset_drift_ms)} ms</div>`;
-      render("完成。可再次进入 XR 重测，结果会覆盖此表。");
+      xrHtml = `<p>VR data: headset capture → ROS publish (${f(r.duration_s, 0)} s)</p>` + table(rows) +
+        `<div>Clock error ±${f(r.sync_err_ms)} ms, drift ${f(r.offset_drift_ms)} ms</div>`;
+      render("Done. Enter XR again to retest; new results replace this table.");
     }
   }
 
@@ -189,11 +189,11 @@
     panel.className = "bench-p";
     document.head.append(style);
     document.body.append(panel);
-    render("时钟同步…");
-    try { sync = await ping(50); } catch (e) { render(`时钟同步失败: ${e}`); return; }
+    render("Synchronizing clocks…");
+    try { sync = await ping(50); } catch (e) { render(`Clock synchronization failed: ${e}`); return; }
     syncLoop();
     watchXr();
-    try { await runVideo(); } catch (e) { videoHtml = `<p>图像测试失败: ${e.message || e}</p>`; }
-    render("现在进入 XR：手柄 20 s → 放下手柄用手势 20 s → 退出 XR，结果自动显示。");
+    try { await runVideo(); } catch (e) { videoHtml = `<p>Video test failed: ${e.message || e}</p>`; }
+    render("Now enter XR: controllers for 20 s → put them down and use hand tracking for 20 s → exit XR; results appear automatically.");
   });
 })();
