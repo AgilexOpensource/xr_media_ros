@@ -13,6 +13,10 @@ def _stamp_ns(message) -> int:
 
 
 def image_to_frame(message) -> VideoFrame:
+    """Convert a ``sensor_msgs/Image`` (``bgr8``, ``rgb8`` or ``mono8``) to a ``VideoFrame`` stamped from its header.
+
+    Row padding (``step``) is removed. Raises ``ValueError`` for other encodings or truncated data.
+    """
     encoding = message.encoding.lower()
     channels = {"bgr8": 3, "rgb8": 3, "mono8": 1}.get(encoding)
     if channels is None:

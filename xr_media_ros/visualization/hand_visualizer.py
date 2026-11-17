@@ -40,6 +40,7 @@ _BONES = (
 
 
 class HandVisualizer(Node):
+    """Publish ``<prefix>/<side>_controller/hand_markers`` (joint spheres and bones) from the typed hand topics."""
     def __init__(self) -> None:
         super().__init__("xr_hand_visualizer")
         prefix = str(self.declare_parameter("topic_prefix", "/xr_media").value).strip().rstrip("/")
@@ -116,6 +117,7 @@ class HandVisualizer(Node):
 
 
 def main(args=None) -> None:
+    """Run the hand visualizer node until shutdown."""
     rclpy.init(args=args)
     node = None
     try:

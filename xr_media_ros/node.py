@@ -440,12 +440,14 @@ class XrMediaNode(Node):
         self._status_publisher.publish(message)
 
     def destroy_node(self) -> bool:
+        """Stop the ROS media sources and the media server, then destroy the node."""
         self._stop_sources()
         self._server.stop_background()
         return super().destroy_node()
 
 
 def main(args: Optional[list] = None) -> None:
+    """Run ``xr_media_node`` on a multi-threaded executor; exits with status 1 on a TLS certificate error."""
     # Fast DDS reads the profile when the node's participant is created; an export wins.
     try:
         os.environ.setdefault(
