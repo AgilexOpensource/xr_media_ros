@@ -33,6 +33,7 @@ xr_media_node:
     topic_prefix: /xr_media
 
     server:
+      host: 0.0.0.0
       port: 9443
       max_clients: 1
       cert_path: ""
@@ -70,6 +71,7 @@ xr_media_node:
 | 参数 | 节点默认值 | 说明 |
 |---|---|---|
 | `topic_prefix` | `/xr_media` | 发布话题及坐标系名称前缀 |
+| `server.host` | `0.0.0.0` | 监听地址。`0.0.0.0` 监听所有网卡；填某块网卡的地址（如 `192.168.1.10`）则只允许该网络访问 |
 | `server.port` | `9443` | TCP 端口，1–65535 |
 | `server.max_clients` | `1` | 正整数；内置 YAML 显式配置为 **2** |
 | `server.cert_path` / `server.key_path` | 空字符串 | 为空时使用用户 TLS 目录中的 `cert.pem`／`key.pem`（`xr_media --init-certs` 生成）；自定义时成对指定。任一文件缺失时节点退出 |

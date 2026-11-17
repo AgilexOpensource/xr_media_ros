@@ -33,6 +33,7 @@ xr_media_node:
     topic_prefix: /xr_media
 
     server:
+      host: 0.0.0.0
       port: 9443
       max_clients: 1
       cert_path: ""
@@ -70,6 +71,7 @@ Cameras and local video files need the SDK's OpenCV extra. Install with `python3
 | Parameter | Node default | Meaning |
 |---|---|---|
 | `topic_prefix` | `/xr_media` | Prefix for published topics and frame names |
+| `server.host` | `0.0.0.0` | Listen address. `0.0.0.0` listens on every interface; a NIC address (e.g. `192.168.1.10`) limits access to that network |
 | `server.port` | `9443` | TCP port, 1–65535 |
 | `server.max_clients` | `1` | Positive integer; the shipped YAML explicitly sets **2** |
 | `server.cert_path` / `server.key_path` | Empty strings | Empty uses `cert.pem` / `key.pem` in the user TLS directory (`xr_media --init-certs`); custom paths must be set together. The node exits if either file is missing |

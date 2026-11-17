@@ -3,6 +3,7 @@ xr_media_node:
     topic_prefix: /xr_media
 
     server:
+      host: 0.0.0.0  # listen address; a specific NIC IP limits access to that network
       port: 9443
       max_clients: 2
       cert_path: ""

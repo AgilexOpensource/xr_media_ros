@@ -121,3 +121,17 @@ def test_haptic_topic_reaches_the_server():
     XrMediaNode._on_haptic(node, "right", Float32MultiArray(data=[0.8]))
     assert node._server.send_haptic.call_count == 1
     node.get_logger.return_value.warn.assert_called_once()
+
+
+@pytest.mark.parametrize("args, expected", [([], "0.0.0.0"), (["-p", "server.host:=127.0.0.1"], "127.0.0.1")])
+def test_server_host_parameter_sets_listen_address(args, expected):
+    rclpy.init(args=["--ros-args", *args] if args else [])
+    node = None
+    try:
+        with patch("xr_media_ros.node.XrMediaServer") as server:
+            node = XrMediaNode()
+            assert server.call_args.args[0].host == expected
+    finally:
+        if node is not None:
+            node.destroy_node()
+        rclpy.try_shutdown()

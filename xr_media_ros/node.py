@@ -118,7 +118,7 @@ class XrMediaNode(Node):
         )
 
         config = MediaServerConfig(
-            host="0.0.0.0",
+            host=str(self.get_parameter("server.host").value).strip() or "0.0.0.0",
             port=int(self.get_parameter("server.port").value),
             codec="h264",
             max_clients=max_clients,
@@ -155,6 +155,7 @@ class XrMediaNode(Node):
     def _declare_parameters(self) -> None:
         defaults = {
             "topic_prefix": "/xr_media",
+            "server.host": "0.0.0.0",
             "server.port": 9443,
             "server.max_clients": 1,
             "server.cert_path": "",
