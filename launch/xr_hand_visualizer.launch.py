@@ -1,7 +1,7 @@
 """Launch the XR hand message to MarkerArray visualizer."""
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -9,6 +9,8 @@ from launch_ros.actions import Node
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         DeclareLaunchArgument("topic_prefix", default_value="/xr_media"),
+        # The bridge talks DDS over loopback only; match it.
+        SetEnvironmentVariable("ROS_LOCALHOST_ONLY", "1"),
         Node(
             package="xr_media_ros",
             executable="xr_hand_visualizer",

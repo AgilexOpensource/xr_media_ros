@@ -6,6 +6,8 @@ import rclpy
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32MultiArray
 
+from xr_media import RigidPose
+
 from xr_media_ros.node import TlsCertificateError, XrMediaNode
 
 
@@ -131,6 +133,23 @@ def test_server_host_parameter_sets_listen_address(args, expected):
         with patch("xr_media_ros.node.XrMediaServer") as server:
             node = XrMediaNode()
             assert server.call_args.args[0].host == expected
+    finally:
+        if node is not None:
+            node.destroy_node()
+        rclpy.try_shutdown()
+
+
+@pytest.mark.parametrize("args, broadcasts", [([], False), (["-p", "publish_tf:=true"], True)])
+def test_tf_is_published_only_when_enabled(args, broadcasts):
+    rclpy.init(args=["--ros-args", *args] if args else [])
+    node = None
+    try:
+        with patch("xr_media_ros.node.XrMediaServer"), \
+                patch("xr_media_ros.node.TransformBroadcaster") as broadcaster:
+            node = XrMediaNode()
+            hand = SimpleNamespace(tracked=False)
+            node._on_xr(SimpleNamespace(hmd_tracked=True, hmd=RigidPose(), left=hand, right=hand))
+            assert broadcaster.return_value.sendTransform.called is broadcasts
     finally:
         if node is not None:
             node.destroy_node()

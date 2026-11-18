@@ -71,6 +71,7 @@ xr_media_node:
 | 参数 | 节点默认值 | 说明 |
 |---|---|---|
 | `topic_prefix` | `/xr_media` | 发布话题及坐标系名称前缀 |
+| `publish_tf` | `false` | 是否同时把位姿广播到 `/tf`。只有 `xr_media_rviz.launch.py` 会打开；`transform` 话题始终发布 |
 | `server.host` | `0.0.0.0` | 监听地址。`0.0.0.0` 监听所有网卡；填某块网卡的地址（如 `192.168.1.10`）则只允许该网络访问 |
 | `server.port` | `9443` | TCP 端口，1–65535 |
 | `server.max_clients` | `1` | 正整数；内置 YAML 显式配置为 **2** |
@@ -138,7 +139,7 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 | 桥接、可视化和 RViz | `ros2 launch xr_media_ros xr_media_rviz.launch.py` |
 | 已有桥接，仅增加可视化 | `ros2 launch xr_media_ros xr_hand_visualizer.launch.py` |
 
-前两种不要同时启动，否则默认端口冲突。集成启动支持 `config:=/path/to/xr_media.yaml` 和 `rviz_config:=/path/to/view.rviz`。
+前两种不要同时启动，否则默认端口冲突。集成启动会把 `publish_tf` 设为 `true`，供 RViz 显示 XR 坐标系，并支持 `config:=/path/to/xr_media.yaml` 和 `rviz_config:=/path/to/view.rviz`。
 
 独立可视化使用自定义前缀时，传入与桥接相同的值：`ros2 launch xr_media_ros xr_hand_visualizer.launch.py topic_prefix:=/custom/xr`。集成启动从 `config` YAML 的 `xr_media_node` 节读取 `topic_prefix`，未设置时依次回退到 `/**` 节和 `/xr_media`。附带 RViz 配置的话题仍为 `/xr_media`；使用其他前缀时，在 RViz 中修改显示话题并保存，通过 `rviz_config` 指定自己的配置文件。
 
@@ -152,7 +153,7 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 
 | 话题 | 消息类型 | 内容／发布条件 |
 |---|---|---|
-| `/xr_media/{role}/transform` | `geometry_msgs/msg/TransformStamped` | 对应设备被跟踪时发布位姿，并广播 TF |
+| `/xr_media/{role}/transform` | `geometry_msgs/msg/TransformStamped` | 对应设备被跟踪时发布位姿；`publish_tf` 打开时同时广播 TF |
 | `/xr_media/{side}_controller/buttons` | `sensor_msgs/msg/Joy` | 对应控制器或手被跟踪时发布按键与轴 |
 | `/xr_media/{side}_controller/hand` | `geometry_msgs/msg/PoseArray` | 该手完整的 25 个关节可用时发布 |
 | `/xr_media/{side}_controller/hand_markers` | `visualization_msgs/msg/MarkerArray` | 独立可视化节点根据手部消息生成 |
@@ -161,7 +162,7 @@ ros2 launch xr_media_ros xr_media.launch.py config:=/path/to/xr_cam.yaml
 
 ### 坐标与时间戳
 - 位姿已从 WebXR 转为 Z-up：+X 向前、+Y 向左、+Z 向上。
-- 头显、手柄和手部使用 `world`；相对变换通过 TF 获取。坐标系名称由 `topic_prefix` 派生。
+- 头显、手柄和手部使用 `world`；相对变换通过 TF（需 `publish_tf`）或 `transform` 话题获取。坐标系名称由 `topic_prefix` 派生。
 - 手部 `header.stamp` 是桥接回调时间，非头显采集时间；`header.frame_id` 为 `world`。
 - 关节位置是世界坐标中的绝对位置，不是相对手腕或相邻关节的位置。
 
@@ -274,7 +275,7 @@ sudo sysctl --system
 | 节点仅 UDP，默认缓冲 | 10 / 10 fps |
 | 节点仅 UDP + sysctl 文件 | 30 / 30 fps |
 
-该配置只作用于 `xr_media_node`，其他节点的传输方式和缓冲大小不变。节点所有图像话题共用一个固定大小的接收缓冲：按 5 路、每路一帧 1920x1080 原始图像计（31104000 字节；实测每路一帧即可让 720p、1080p 原始图像达到 30 fps）。sysctl 文件只提高上限（`rmem_max`），不改其他进程的默认缓冲。发布者在同一台机器时走 loopback（MTU 65536），无需修改内核 IP 分片限制；若原始图像经网线来自另一台机器且出现丢帧（`nstat -az IpReasmFails` 增长），再调大 `net.ipv4.ipfrag_high_thresh`。
+该配置只作用于 `xr_media_node`，其他节点的传输方式和缓冲大小不变。节点所有图像话题共用一个固定大小的接收缓冲：按 5 路、每路一帧 1920x1080 原始图像计（31104000 字节；实测每路一帧即可让 720p、1080p 原始图像达到 30 fps）。sysctl 文件只提高上限（`rmem_max`），不改其他进程的默认缓冲。该配置还把节点固定在 loopback（`127.0.0.1`），不看 `ROS_LOCALHOST_ONLY`：网络上其他 ROS 主机不会阻塞它的发布，另一台机器的 ROS 话题也收不到。同机使用它话题的节点和工具（遥操作、`ros2 topic`、RViz）须以 `ROS_LOCALHOST_ONLY=1` 运行；为 `0` 时它们只公布网卡地址，收不到数据。RViz 和可视化的 launch 文件会自行设置。loopback 的 MTU 为 65536，无需修改内核 IP 分片限制。浏览器仍可经任意网卡连接 HTTPS 服务，见 `server.host`。
 
 节点在创建 DDS participant 之前把 `FASTRTPS_DEFAULT_PROFILES_FILE` 设为随包配置，因此 `ros2 launch` 和 `ros2 run` 都适用；如已导出 `FASTRTPS_DEFAULT_PROFILES_FILE` 则沿用它。节点需作为独立进程运行，不要放进 component container，否则其他节点可能已先创建 participant。该配置只对 Fast DDS（Humble 默认 RMW）生效。
 

@@ -6,6 +6,8 @@
   All image topics of the node share one receive socket; its buffer holds one
   raw 1920x1080 frame for each of 5 streams (1920*1080*3*5 bytes).
   The kernel caps it at net.core.rmem_max: install 60-xr-media-udp.conf.
+  Loopback only, regardless of ROS_LOCALHOST_ONLY: the node never talks DDS over
+  the network, so other ROS hosts on the LAN cannot stall its publishers.
 -->
 <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
   <transport_descriptors>
@@ -13,6 +15,9 @@
       <transport_id>udp</transport_id>
       <type>UDPv4</type>
       <receiveBufferSize>31104000</receiveBufferSize>
+      <interfaceWhiteList>
+        <address>127.0.0.1</address>
+      </interfaceWhiteList>
     </transport_descriptor>
   </transport_descriptors>
   <participant profile_name="xr_media_udp" is_default_profile="true">

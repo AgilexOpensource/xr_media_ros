@@ -97,7 +97,10 @@ class XrMediaNode(Node):
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
         )
-        self._tf = TransformBroadcaster(self)
+        publish_tf = self.get_parameter("publish_tf").value
+        if type(publish_tf) is not bool:
+            raise ValueError("publish_tf must be a boolean")
+        self._tf = TransformBroadcaster(self) if publish_tf else None
         self._transform_publishers = {
             role: self.create_publisher(
                 TransformStamped, f"{self._prefix}/{role}/transform", 10
@@ -155,6 +158,7 @@ class XrMediaNode(Node):
     def _declare_parameters(self) -> None:
         defaults = {
             "topic_prefix": "/xr_media",
+            "publish_tf": False,
             "server.host": "0.0.0.0",
             "server.port": 9443,
             "server.max_clients": 1,
@@ -360,7 +364,7 @@ class XrMediaNode(Node):
             if publisher is not None:
                 publisher.publish(self._joy(stamp, self._frames[role], hand.input))
             self._maybe_publish_hand(stamp, side, hand.joints)
-        if transforms:
+        if transforms and self._tf is not None:
             self._tf.sendTransform(transforms)
 
     def _maybe_publish_hand(self, stamp, side: str, joints, tracked: bool = True) -> None:

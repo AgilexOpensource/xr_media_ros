@@ -71,6 +71,7 @@ Cameras and local video files need the SDK's OpenCV extra. Install with `python3
 | Parameter | Node default | Meaning |
 |---|---|---|
 | `topic_prefix` | `/xr_media` | Prefix for published topics and frame names |
+| `publish_tf` | `false` | Also broadcast the poses on `/tf`. Only `xr_media_rviz.launch.py` turns it on; the `transform` topics are published either way |
 | `server.host` | `0.0.0.0` | Listen address. `0.0.0.0` listens on every interface; a NIC address (e.g. `192.168.1.10`) limits access to that network |
 | `server.port` | `9443` | TCP port, 1–65535 |
 | `server.max_clients` | `1` | Positive integer; the shipped YAML explicitly sets **2** |
@@ -138,7 +139,7 @@ Only one program can open the camera at a time; close any browser page that is u
 | Bridge, visualizer and RViz | `ros2 launch xr_media_ros xr_media_rviz.launch.py` |
 | Add visualization to a running bridge | `ros2 launch xr_media_ros xr_hand_visualizer.launch.py` |
 
-Do not run the first two together: their default ports conflict. The combined launch accepts `config:=/path/to/xr_media.yaml` and `rviz_config:=/path/to/view.rviz`.
+Do not run the first two together: their default ports conflict. The combined launch sets `publish_tf` to `true` so RViz can show the XR frames, and accepts `config:=/path/to/xr_media.yaml` and `rviz_config:=/path/to/view.rviz`.
 
 For a custom bridge prefix, pass the same value to the standalone visualizer: `ros2 launch xr_media_ros xr_hand_visualizer.launch.py topic_prefix:=/custom/xr`. The integrated launch reads `topic_prefix` from the `xr_media_node` section of its `config` YAML (falling back to `/**` and then `/xr_media`). The shipped RViz display topics use `/xr_media`; for another prefix, update them in RViz and save/pass your own `rviz_config` file.
 
@@ -152,7 +153,7 @@ The default prefix is `/xr_media`. `{side}` is `left` or `right`; `{role}` is `h
 
 | Topic | Message type | Content / publication condition |
 |---|---|---|
-| `/xr_media/{role}/transform` | `geometry_msgs/msg/TransformStamped` | Pose and TF while the corresponding device is tracked |
+| `/xr_media/{role}/transform` | `geometry_msgs/msg/TransformStamped` | Pose while the corresponding device is tracked; also on TF when `publish_tf` is on |
 | `/xr_media/{side}_controller/buttons` | `sensor_msgs/msg/Joy` | Buttons and axes while the controller or hand is tracked |
 | `/xr_media/{side}_controller/hand` | `geometry_msgs/msg/PoseArray` | Published when all 25 hand joints are available |
 | `/xr_media/{side}_controller/hand_markers` | `visualization_msgs/msg/MarkerArray` | Generated from hand messages by the separate visualizer |
@@ -161,7 +162,7 @@ The default prefix is `/xr_media`. `{side}` is `left` or `right`; `{role}` is `h
 
 ### Coordinates and timestamps
 - Poses are converted from WebXR to Z-up: +X forward, +Y left, +Z up.
-- Headset, controllers and hands share `world`; obtain relative transforms from TF. Frame names derive from `topic_prefix`.
+- Headset, controllers and hands share `world`; obtain relative transforms from TF (with `publish_tf`) or the `transform` topics. Frame names derive from `topic_prefix`.
 - Hand `header.stamp` is the bridge callback time, not capture time; `header.frame_id` is `world`.
 - Joint positions are absolute in that frame, not relative to the wrist or adjacent joints.
 
@@ -274,7 +275,7 @@ sudo sysctl --system
 | Node UDP only, default buffers | 10 / 10 fps |
 | Node UDP only + sysctl file | 30 / 30 fps |
 
-The profile only applies to `xr_media_node`; other nodes keep their transports and buffer sizes. All image topics of the node share one fixed receive buffer: one raw 1920x1080 frame for each of 5 streams (31104000 bytes; one frame per stream measured enough for raw 720p and 1080p at 30 fps). The sysctl file only raises the cap (`rmem_max`), not other processes' default buffers. Publishers on the same machine use loopback (MTU 65536), so the kernel IP fragment limits need no change. If raw images come from another machine over Ethernet and frames drop (`nstat -az IpReasmFails` grows), also raise `net.ipv4.ipfrag_high_thresh`.
+The profile only applies to `xr_media_node`; other nodes keep their transports and buffer sizes. All image topics of the node share one fixed receive buffer: one raw 1920x1080 frame for each of 5 streams (31104000 bytes; one frame per stream measured enough for raw 720p and 1080p at 30 fps). The sysctl file only raises the cap (`rmem_max`), not other processes' default buffers. The profile also limits the node to loopback (`127.0.0.1`), whatever `ROS_LOCALHOST_ONLY` says: other ROS hosts on the network cannot block its publishers, and ROS topics from another machine do not reach it. Nodes and tools on the same machine that use its topics (teleop, `ros2 topic`, RViz) must run with `ROS_LOCALHOST_ONLY=1`; with `0` they announce only network addresses and see no data. The RViz and visualizer launch files set it themselves. Loopback has an MTU of 65536, so the kernel IP fragment limits need no change. Browsers still connect to the HTTPS server over any interface; see `server.host`.
 
 The node sets `FASTRTPS_DEFAULT_PROFILES_FILE` to the shipped profile before creating its DDS participant, so both `ros2 launch` and `ros2 run` work; an exported `FASTRTPS_DEFAULT_PROFILES_FILE` is kept instead. Run the node as its own process, not in a component container, where another node may already have created the participant. The profile only applies to Fast DDS (the Humble default RMW).
 

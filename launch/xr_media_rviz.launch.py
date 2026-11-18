@@ -5,7 +5,7 @@ import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, SetEnvironmentVariable
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -40,12 +40,15 @@ def generate_launch_description() -> LaunchDescription:
             default_value=os.path.join(package_share, "rviz", "xr_media.rviz"),
             description="Path to the RViz configuration file",
         ),
+        # The bridge talks DDS over loopback only; RViz and the visualizer must match it.
+        SetEnvironmentVariable("ROS_LOCALHOST_ONLY", "1"),
         Node(
             package="xr_media_ros",
             executable="xr_media_node",
             name="xr_media_node",
             output="screen",
-            parameters=[config],
+            # RViz shows the XR frames through TF; the bridge publishes it only here.
+            parameters=[config, {"publish_tf": True}],
         ),
         OpaqueFunction(function=_visualizer),
         Node(
