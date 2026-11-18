@@ -211,7 +211,7 @@ ros2 topic info /xr_media/camera --verbose
 ros2 topic echo /xr_media/status --once
 ```
 
-`status` uses `std_msgs/msg/String` with JSON in `data`: SDK media statistics, XR received/dispatched/replaced counts, `conversion_errors` (image conversion failures) and `xr_samples` (XR samples received by the bridge). Counts do not confirm browser display or playback.
+`status` uses `std_msgs/msg/String` with JSON in `data`: SDK media statistics, XR received/dispatched/replaced counts, `xr_frame_rate` (headset XR frame rate in Hz, which is also the XR sample rate; `null` until reported), `conversion_errors` (image conversion failures) and `xr_samples` (XR samples received by the bridge). Counts do not confirm browser display or playback.
 
 | Symptom | Check |
 |---|---|

@@ -211,7 +211,7 @@ ros2 topic info /xr_media/camera --verbose
 ros2 topic echo /xr_media/status --once
 ```
 
-`status` 使用 `std_msgs/msg/String`，`data` 是 JSON；包含 SDK 媒体统计、XR 收到／派发／替换计数，以及 `conversion_errors`（图像转换错误）和 `xr_samples`（桥接收到的 XR 样本数）。统计不代表浏览器已经显示或播放。
+`status` 使用 `std_msgs/msg/String`，`data` 是 JSON；包含 SDK 媒体统计、XR 收到／派发／替换计数、`xr_frame_rate`（头显 XR 帧率，单位 Hz，也就是 XR 样本频率；未报告前为 `null`），以及 `conversion_errors`（图像转换错误）和 `xr_samples`（桥接收到的 XR 样本数）。统计不代表浏览器已经显示或播放。
 
 | 现象 | 检查 |
 |---|---|
